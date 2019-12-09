@@ -2,14 +2,17 @@ package arrow.test.generators
 
 import arrow.Kind
 import arrow.core.Either
-import arrow.core.Eval
+import arrow.core.Endo
 import arrow.core.Failure
-import arrow.core.ForOption
 import arrow.core.Left
-import arrow.core.None
+import arrow.core.ListK
+import arrow.core.MapK
+import arrow.core.NonEmptyList
 import arrow.core.Option
 import arrow.core.Right
-import arrow.core.Some
+import arrow.core.SequenceK
+import arrow.core.SetK
+import arrow.core.SortedMapK
 import arrow.core.Success
 import arrow.core.Try
 import arrow.core.Tuple10
@@ -21,21 +24,9 @@ import arrow.core.Tuple6
 import arrow.core.Tuple7
 import arrow.core.Tuple8
 import arrow.core.Tuple9
-import arrow.core.fix
-import arrow.core.toOption
-import arrow.core.extensions.option.functor.functor
-import arrow.core.ListK
-import arrow.core.MapK
-import arrow.core.NonEmptyList
-import arrow.core.SequenceK
-import arrow.core.SetK
-import arrow.core.SortedMapK
 import arrow.core.Validated
 import arrow.core.k
-import arrow.recursion.Algebra
-import arrow.recursion.Coalgebra
-import arrow.recursion.typeclasses.Corecursive
-import arrow.recursion.typeclasses.Recursive
+import arrow.core.toOption
 import arrow.typeclasses.Applicative
 import arrow.typeclasses.ApplicativeError
 import io.kotlintest.properties.Gen
@@ -117,6 +108,7 @@ fun Gen.Companion.intPredicate(): Gen<(Int) -> Boolean> =
     )
   }
 
+fun <A> Gen.Companion.endo(gen: Gen<A>): Gen<Endo<A>> = gen.map { a: A -> Endo<A> { a } }
 fun <B> Gen.Companion.option(gen: Gen<B>): Gen<Option<B>> =
   gen.orNull().map { it.toOption() }
 
@@ -156,21 +148,5 @@ fun Gen.Companion.char(): Gen<Char> =
 
 fun <A> Gen.Companion.genSetK(genA: Gen<A>): Gen<SetK<A>> = Gen.set(genA).map { it.k() }
 
-// For generating recursive data structures with recursion schemes
-
-typealias NatPattern = ForOption
-typealias GNat<T> = Kind<T, NatPattern>
-
-fun toGNatCoalgebra(): Coalgebra<NatPattern, Int> = Coalgebra {
-  if (it == 0) None else Some(it - 1)
-}
-
-fun fromGNatAlgebra(): Algebra<NatPattern, Eval<Int>> = Algebra {
-  it.fix().fold({ Eval.Zero }, { it.map { it + 1 } })
-}
-
-inline fun <reified T> Corecursive<T>.toGNat(i: Int): GNat<T> =
-  Option.functor().ana(i, toGNatCoalgebra())
-
-inline fun <reified T> Recursive<T>.toInt(i: GNat<T>): Int =
-  Option.functor().cata(i, fromGNatAlgebra())
+fun Gen.Companion.unit(): Gen<Unit> =
+  create { Unit }

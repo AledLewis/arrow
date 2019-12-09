@@ -42,6 +42,11 @@ internal interface IOFrame<E, in A, out R> : (A) -> R {
       override fun recover(e: E): IO<E, A> = fe(e).fix()
     }
 
+    internal class MapError<E, A, E2>(val fe: (E) -> (E2)) : IOFrame<E, A, IO<E2, A>> {
+      override fun invoke(a: A): IO<E2, A> = Pure(a)
+      override fun recover(e: E): IO<E2, A> = IO.RaiseError(fe(e))
+    }
+
     @Suppress("UNCHECKED_CAST")
     fun <E, A> attempt(): (A) -> IO<E, Either<E, A>> = AttemptIO as (A) -> IO<E, Either<E, A>>
 

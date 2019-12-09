@@ -1,13 +1,16 @@
 package arrow.fx
 
 import arrow.Kind
-import arrow.core.None
-import arrow.core.Option
-import arrow.core.Some
 import arrow.fx.internal.CancelablePromise
 import arrow.fx.internal.UncancelablePromise
 import arrow.fx.typeclasses.Async
 import arrow.fx.typeclasses.Concurrent
+import arrow.core.Tuple2
+import arrow.core.Option
+import arrow.core.None
+import arrow.core.Some
+import arrow.core.toT
+import arrow.core.getOrElse
 
 /**
  * When made, a [Promise] is empty. Until it is fulfilled, which can only happen once.
@@ -207,12 +210,12 @@ interface Promise<F, A> {
      *
      * fun main(args: Array<String>) {
      *   //sampleStart
-     *   val promise: IOOf<Throwable, Promise<ForIO, Int>> = Promise(IO.concurrent())
+     *   val promise: IOOf<Promise<ForIO, Int>> = Promise(IO.concurrent())
      *   //sampleEnd
      * }
      * ```
      */
-    operator fun <F, A> invoke(CF: Concurrent<F, Throwable>): Kind<F, Promise<F, A>> =
+    operator fun <F, A> invoke(CF: Concurrent<F>): Kind<F, Promise<F, A>> =
       CF.later { CancelablePromise<F, A>(CF) }
 
     /**
@@ -230,8 +233,7 @@ interface Promise<F, A> {
      * }
      * ```
      */
-    fun <F, A> unsafeCancelable(CF: Concurrent<F, Throwable>): Promise<F, A> =
-      CancelablePromise(CF)
+    fun <F, A> unsafeCancelable(CF: Concurrent<F>): Promise<F, A> = CancelablePromise(CF)
 
     /**
      * Creates an empty `Promise` from on [Async] instance for [F].
@@ -243,12 +245,12 @@ interface Promise<F, A> {
      *
      * fun main(args: Array<String>) {
      *   //sampleStart
-     *   val promise: IOOf<Throwable, Promise<ForIO, Int>> = Promise.uncancelable(IO.async())
+     *   val promise: IOOf<Promise<ForIO, Int>> = Promise.uncancelable(IO.async())
      *   //sampleEnd
      * }
      * ```
      */
-    fun <F, A> uncancelable(AS: Async<F, Throwable>): Kind<F, Promise<F, A>> =
+    fun <F, A> uncancelable(AS: Async<F>): Kind<F, Promise<F, A>> =
       AS.later { UncancelablePromise<F, A>(AS) }
 
     /**
@@ -267,8 +269,38 @@ interface Promise<F, A> {
      * }
      * ```
      */
-    fun <F, A> unsafeUncancelable(AS: Async<F, Throwable>): Promise<F, A> =
-      UncancelablePromise(AS)
+    fun <F, A> unsafeUncancelable(AS: Async<F>): Promise<F, A> = UncancelablePromise(AS)
+
+    /**
+     *
+     * This allows atomic modification of a [Ref], and in its `use`
+     * function it also passes a `Promise` that defers the triggering of
+     * `release` until completed.
+     * This allows for use-cases such as a blocking offer for [Queue] where the offer is deferred
+     * until there is available capacity in the [Queue]. When there is capacity available, the putter
+     * will put the value in the [Queue] and complete the `Promise` so that the `release` function can
+     * do the clean-up.
+     */
+    fun <F, A, B, C> bracket(
+      ref: Ref<F, A>,
+      use: (Promise<F, B>, A) -> Tuple2<Kind<F, C>, A>,
+      release: (C, Promise<F, B>) -> Kind<F, Unit>,
+      CF: Concurrent<F>
+    ): Kind<F, B> = CF.fx.concurrent {
+      val releaseRef = !Ref<Option<Tuple2<C, Promise<F, B>>>>(None)
+      !fx.concurrent {
+
+        // creates a new promise for `use` and returns
+        val (fc, pb) = !ref.modify { a ->
+          val pb = unsafeCancelable<F, B>(this)
+          val (fc, a2) = use(pb, a)
+          a2 toT (fc toT pb)
+        }
+        val c = !fc
+        !(releaseRef.set(Some(c toT pb)).followedBy(just(pb))).uncancelable()
+        !pb.get()
+      }.guarantee(releaseRef.get().flatMap { it.map { (c, fb) -> release(c, fb) }.getOrElse { just(Unit) } })
+    }
   }
 
   object AlreadyFulfilled : Throwable(message = "Promise was already fulfilled")

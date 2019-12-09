@@ -2,19 +2,15 @@ package arrow.fx.typeclasses
 
 import arrow.Kind
 import arrow.core.Either
-import arrow.core.NonFatal
 import arrow.fx.Ref
-import arrow.typeclasses.Monad
-import arrow.typeclasses.MonadError
-import arrow.typeclasses.MonadFx
-import kotlin.coroutines.startCoroutine
+import arrow.typeclasses.MonadThrow
 
 /**
  * ank_macro_hierarchy(arrow.fx.typeclasses.MonadDefer)
  *
  * The context required to defer evaluating a safe computation.
  **/
-interface MonadDefer<F, E> : MonadError<F, E>, Bracket<F, E> {
+interface MonadDefer<F> : MonadThrow<F>, Bracket<F, Throwable> {
 
   fun <A> defer(fa: () -> Kind<F, A>): Kind<F, A>
 
@@ -23,41 +19,45 @@ interface MonadDefer<F, E> : MonadError<F, E>, Bracket<F, E> {
       try {
         just(f())
       } catch (t: Throwable) {
-        t.raiseThrowableNonFatal<A>()
+        t.raiseNonFatal<A>()
       }
     }
 
-  fun <A> later(fa: Kind<F, A>): Kind<F, A> =
-    defer { fa }
+  fun <A> later(fa: Kind<F, A>): Kind<F, A> = defer { fa }
 
-  fun lazy(): Kind<F, Unit> =
-    later { }
+  fun lazy(): Kind<F, Unit> = later { }
 
-  fun <A> Throwable.raiseThrowableNonFatal(): Kind<F, A> =
-    @Suppress("UNCHECKED_CAST")
-    if (NonFatal(this)) raiseError(this as E) else throw this
-
-  fun <A> laterOrRaise(f: () -> Either<E, A>): Kind<F, A> =
-    defer { f().fold(::raiseError, ::just) }
+  fun <A> laterOrRaise(f: () -> Either<Throwable, A>): Kind<F, A> =
+    defer { f().fold({ raiseError<A>(it) }, { just(it) }) }
 
   /**
-   * Creates a [Ref] to purely manage mutable state, initialized by the function [f]
+   * Create a [Ref] a pure atomic reference to safely manage mutable state.
+   * It's a pure version of [java.util.concurrent.atomic.AtomicReference] that works in context [F].
+   *
+   * It's always initialized to a value, and allows for concurrent updates.
+   *
+   * ```kotlin:ank:playground
+   * import arrow.Kind
+   * import arrow.core.Tuple2
+   * import arrow.fx.*
+   * import arrow.fx.extensions.io.monadDefer.monadDefer
+   * import arrow.fx.typeclasses.MonadDefer
+   *
+   * fun main(args: Array<String>) {
+   *   fun <F> MonadDefer<F>.refExample(): Kind<F, Tuple2<Int, Int>> =
+   *     //sampleStart
+   *     fx.monad {
+   *       val ref = !Ref(1)
+   *       val initial = !ref.getAndUpdate(Int::inc)
+   *       val updated = !ref.get()
+   *       Tuple2(initial, updated)
+   *     }
+   *
+   *   //sampleEnd
+   *   IO.monadDefer().refExample()
+   *     .fix().unsafeRunSync().let(::println)
+   * }
+   * ```
    */
-  fun <A> ref(f: () -> A): Kind<F, Ref<F, A>> = Ref(this, f)
-
-  override val fx: MonadDeferFx<F, E>
-    get() = object : MonadDeferFx<F, E> {
-      override val ME: MonadDefer<F, E> = this@MonadDefer
-    }
-}
-
-interface MonadDeferFx<F, E> : MonadFx<F> {
-  val ME: MonadDefer<F, E>
-  override val M: Monad<F> get() = ME
-  fun <A> monadError(c: suspend MonadDeferSyntax<F, E>.() -> A): Kind<F, A> {
-    val continuation = MonadDeferContinuation<F, A, E>(ME)
-    val wrapReturn: suspend MonadDeferSyntax<F, E>.() -> Kind<F, A> = { just(c()) }
-    wrapReturn.startCoroutine(continuation, continuation)
-    return continuation.returnedMonad()
-  }
+  fun <A> Ref(a: A): Kind<F, Ref<F, A>> = Ref(this, a)
 }

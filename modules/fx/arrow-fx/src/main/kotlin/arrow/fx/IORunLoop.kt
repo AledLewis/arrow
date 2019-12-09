@@ -76,7 +76,7 @@ internal object IORunLoop {
         is IO.Effect -> {
           return suspendAsync(currentIO, bFirst, bRest) as IO<E, A>
         }
-        is IO.Bind<*, *, *> -> {
+        is IO.Bind<*, *, *, *> -> {
           if (bFirst != null) {
             if (bRest == null) {
               bRest = ArrayStack()
@@ -110,7 +110,6 @@ internal object IORunLoop {
             loop(localCurrent, conn, cb as Callback, null, bFirst, bRest, EmptyCoroutineContext)
           }
         }
-        is IO.MapError<*, *, *> -> TODO()
         null -> {
           currentIO = IO.RaiseError(IORunLoopStepOnNull)
         }
@@ -118,7 +117,7 @@ internal object IORunLoop {
           // Since we don't capture the value of `when` kotlin doesn't enforce exhaustiveness
           currentIO = IO.raiseError(IORunLoopMissingStep)
         }
-      }.exhaustive
+      }
 
       if (hasResult) {
 
@@ -229,7 +228,7 @@ internal object IORunLoop {
           rcb.start(currentIO, ctx, bFirst, bRest)
           return
         }
-        is IO.Bind<*, *, *> -> {
+        is IO.Bind<*, *, *, *> -> {
           if (bFirst != null) {
             if (bRest == null) bRest = ArrayStack()
             bRest.push(bFirst)
@@ -487,6 +486,3 @@ internal object IORunLoopMissingLoop : ArrowInternalException() {
 internal object IORunLoopOnNull : ArrowInternalException() {
   override fun fillInStackTrace(): Throwable = this
 }
-
-internal val Any?.exhaustive: Any?
-  get() = this

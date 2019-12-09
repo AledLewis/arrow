@@ -16,14 +16,11 @@ import arrow.test.laws.MonoidLaws
 import arrow.test.laws.forFew
 import arrow.typeclasses.Eq
 import io.kotlintest.properties.Gen
-import io.kotlintest.runner.junit4.KotlinTestRunner
-import org.junit.runner.RunWith
 
-@RunWith(KotlinTestRunner::class)
 class ResourceTest : UnitSpec() {
   init {
 
-    val EQ = Eq<Kind<ResourcePartialOf<ForIO, Throwable>, Int>> { a, b ->
+    val EQ = Eq<Kind<ResourcePartialOf<IOPartialOf<Throwable>, Throwable>, Int>> { a, b ->
       val tested: IO<Throwable, Int> = a.fix().invoke { IO.just(1) }.fix()
       val expected = b.fix().invoke { IO.just(1) }.fix()
       val compare = IO.applicative().map(tested, expected) { (t, e) -> t == e }.fix()

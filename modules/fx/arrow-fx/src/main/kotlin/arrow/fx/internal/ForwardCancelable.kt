@@ -5,12 +5,12 @@ import arrow.core.NonFatal
 import arrow.fx.CancelToken
 import arrow.fx.IO
 import arrow.fx.IOConnection
-import arrow.fx.IOPartialOf
+import arrow.fx.IOOf
 import arrow.fx.IORunLoop
 import arrow.fx.fix
 import arrow.fx.internal.ForwardCancelable.Companion.State.Active
 import arrow.fx.internal.ForwardCancelable.Companion.State.Empty
-import java.util.concurrent.atomic.AtomicReference
+import kotlinx.atomicfu.atomic
 
 /**
  * A placeholder for a [CancelToken] that will be set at a later time, the equivalent of a
@@ -18,16 +18,16 @@ import java.util.concurrent.atomic.AtomicReference
  */
 class ForwardCancelable {
 
-  private val state = AtomicReference<State<Throwable>>(init())
+  private val state = atomic<State>(init)
 
-  fun cancel(): CancelToken<IOPartialOf<Throwable>> {
-    fun loop(conn: IOConnection, cb: (Either<Throwable, Unit>) -> Unit): Unit = state.get().let { current ->
+  fun cancel(): IO<Throwable, Unit> {
+    fun loop(conn: IOConnection, cb: (Either<Throwable, Unit>) -> Unit): Unit = state.value.let { current ->
       when (current) {
-        is Empty -> if (!state.compareAndSet(current, Empty(listOf(cb) + current.stack)))
+        is State.Empty -> if (!state.compareAndSet(current, State.Empty(listOf(cb) + current.stack)))
           loop(conn, cb)
 
         is Active -> {
-          state.lazySet(finished()) // GC purposes
+          state.lazySet(finished) // GC purposes
           // TODO this runs in an immediate execution context in cats-effect
           IORunLoop.startCancelable(current.token, conn, cb)
         }
@@ -37,7 +37,7 @@ class ForwardCancelable {
     return IO.Async { conn, cb -> loop(conn, cb) }
   }
 
-  fun complete(value: CancelToken<IOPartialOf<Throwable>>): Unit = state.get().let { current ->
+  fun complete(value: IOOf<Throwable, Unit>): Unit = state.value.let { current ->
     when (current) {
       is Active -> {
         value.fix().unsafeRunAsync {}
@@ -48,7 +48,7 @@ class ForwardCancelable {
         if (!state.compareAndSet(current, Active(value)))
           complete(value)
       } else {
-        if (!state.compareAndSet(current, finished()))
+        if (!state.compareAndSet(current, finished))
           complete(value)
         else
           execute(value, current.stack)
@@ -69,18 +69,16 @@ class ForwardCancelable {
      *  - on `cancel`, if the state was [Active], or if it was [Empty],
      *    regardless, the state transitions to `Active(IO.unit)`, aka [finished]
      */
-    private sealed class State<E> {
-      data class Empty<E>(val stack: List<(Either<E, Unit>) -> Unit>) : State<E>()
-      data class Active<E>(val token: CancelToken<IOPartialOf<Throwable>>) : State<E>()
+    private sealed class State {
+      data class Empty(val stack: List<(Either<Throwable, Unit>) -> Unit>) : State()
+      data class Active(val token: IOOf<Throwable, Unit>) : State()
     }
 
-    private val init: State<Any?> = Empty(listOf())
-    private val finished: State<Any?> = Active(IO.unit)
-    private fun <E> init(): State<E> = init as State<E>
-    private fun <E> finished(): State<E> = finished as State<E>
+    private val init: State = Empty(listOf())
+    private val finished: State = Active(IO.unit)
 
-    private fun execute(token: CancelToken<IOPartialOf<Throwable>>, stack: List<(Either<Throwable, Unit>) -> Unit>): Unit =
-    // TODO this runs in an immediate execution context in cats-effect
+    private fun execute(token: IOOf<Throwable, Unit>, stack: List<(Either<Throwable, Unit>) -> Unit>): Unit =
+      // TODO this runs in an immediate execution context in cats-effect
       token.fix().unsafeRunAsync { r ->
         val errors = stack.fold(emptyList<Throwable>()) { acc, cb ->
           try {

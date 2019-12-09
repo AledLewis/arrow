@@ -12,7 +12,6 @@ import arrow.core.Right
 import arrow.core.Some
 import arrow.core.Success
 import arrow.core.Try
-import arrow.fx.ForIO
 import arrow.fx.IO
 import arrow.fx.fix
 import arrow.fx.extensions.io.monadError.monadError
@@ -23,6 +22,7 @@ import arrow.core.fix
 import arrow.core.identity
 import arrow.core.right
 import arrow.core.some
+import arrow.fx.IOPartialOf
 import arrow.streams.internal.freec.eq.eq
 import arrow.streams.internal.freec.monadDefer.monadDefer
 import arrow.test.UnitSpec
@@ -33,9 +33,7 @@ import arrow.test.laws.MonadDeferLaws
 import arrow.typeclasses.Eq
 import io.kotlintest.properties.Gen
 import io.kotlintest.properties.forAll
-import io.kotlintest.runner.junit4.KotlinTestRunner
 import io.kotlintest.shouldBe
-import org.junit.runner.RunWith
 
 @higherkind
 sealed class Ops<out A> : OpsOf<A> {
@@ -64,7 +62,7 @@ val eitherInterpreter: FunctionK<ForOps, EitherPartialOf<Throwable>> = object : 
 }
 
 @Suppress("UNCHECKED_CAST")
-val ioInterpreter: FunctionK<ForOps, ForIO> = object : FunctionK<ForOps, ForIO> {
+val ioInterpreter: FunctionK<ForOps, IOPartialOf<Throwable>> = object : FunctionK<ForOps, IOPartialOf<Throwable>> {
   override fun <A> invoke(fa: Kind<ForOps, A>): IO<Throwable, A> {
     val op = fa.fix()
     return when (op) {
@@ -87,7 +85,6 @@ private fun stackSafeTestProgram(n: Int, stopAt: Int): FreeC<ForOps, Int> = Ops.
   r
 }.fix()
 
-@RunWith(KotlinTestRunner::class)
 class FreeCTest : UnitSpec() {
 
   init {
@@ -106,9 +103,9 @@ class FreeCTest : UnitSpec() {
     testLaws(
       MonadDeferLaws.laws(
         SC = FreeC.monadDefer(),
-        EQ = FreeC.eq(Try.monadError(), FunctionK.id(), Eq.any()),
-        EQ_EITHER = FreeC.eq(Try.monadError(), FunctionK.id(), Eq.any()),
-        EQERR = FreeC.eq(Try.monadError(), FunctionK.id(), Eq.any())
+        EQ = FreeC.eq(IO.monadError(), FunctionK.id(), Eq.any()),
+        EQ_EITHER = FreeC.eq(IO.monadError(), FunctionK.id(), Eq.any()),
+        EQERR = FreeC.eq(IO.monadError(), FunctionK.id(), Eq.any())
       ))
 
     "Can interpret an ADT as Free operations" {

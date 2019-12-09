@@ -1,25 +1,23 @@
 package arrow.fx.typeclasses
 
-import arrow.Kind
 import arrow.typeclasses.MonadContinuation
 import arrow.typeclasses.MonadSyntax
+import arrow.typeclasses.MonadThrowFx
 import kotlin.coroutines.CoroutineContext
 import kotlin.coroutines.EmptyCoroutineContext
 import kotlin.coroutines.RestrictsSuspension
 
 @RestrictsSuspension
-interface MonadDeferSyntax<F, E> : MonadSyntax<F>, MonadDefer<F, E>
+interface MonadDeferSyntax<F> : MonadSyntax<F>, MonadDefer<F>
 
 @Suppress("DELEGATED_MEMBER_HIDES_SUPERTYPE_OVERRIDE")
-open class MonadDeferContinuation<F, A, E>(ME: MonadDefer<F, E>, override val context: CoroutineContext = EmptyCoroutineContext) :
-  MonadContinuation<F, A>(ME), MonadDefer<F, E> by ME, MonadDeferSyntax<F, E> {
+open class MonadDeferContinuation<F, A>(ME: MonadDefer<F>, override val context: CoroutineContext = EmptyCoroutineContext) :
+  MonadContinuation<F, A>(ME), MonadDefer<F> by ME, MonadDeferSyntax<F> {
 
-  override val fx: MonadDeferFx<F, E> = ME.fx
+  override val fx: MonadThrowFx<F> = ME.fx
 
   @Suppress("UNCHECKED_CAST")
   override fun resumeWithException(exception: Throwable) {
-    returnedMonad = exception.raiseThrowableNonFatal()
+    returnedMonad = raiseError(exception)
   }
-
-  override fun <B> binding(c: suspend MonadSyntax<F>.() -> B): Kind<F, B> = fx.monad(c)
 }

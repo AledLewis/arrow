@@ -34,21 +34,21 @@ Executes and defers the result into a new `IO` that has captured any exceptions 
 Running this new `IO` will work over its result, rather than on the original `IO` content where `attempt()` was called on.
 
 ```kotlin
-IO<Throwable, Int> { throw RuntimeException() }
+IO<Int> { throw RuntimeException() }
   .attempt()
 ```
 
 ### runAsync
 
-Takes as a parameter a callback from a result of `Either<Throwable, A>` to a new `IO<Throwable, Unit>` instance.
-All exceptions that would happen on the function parameter are automatically captured and propagated to the `IO<Throwable, Unit>` return.
+Takes as a parameter a callback from a result of `Either<Throwable, A>` to a new `IO<Unit>` instance.
+All exceptions that would happen on the function parameter are automatically captured and propagated to the `IO<Unit>` return.
 
 It runs the current `IO` asynchronously, calling the callback parameter on completion and returning its result.
 
 The operation will not yield a result immediately; ultimately to start running the suspended computation you have to evaluate that new instance using an unsafe operator like `unsafeRunAsync` or `unsafeRunSync` for `IO`.
 
 ```kotlin
-IO<Throwable, Int> { throw RuntimeException("Boom!") }
+IO<Int> { throw RuntimeException("Boom!") }
   .runAsync { result ->
     result.fold({ IO { println("Error") } }, { IO { println(it.toString()) } })
   }
@@ -62,11 +62,26 @@ This callback is assumed to never throw any internal exceptions.
 It runs the current `IO` asynchronously, calling the callback parameter on completion.
 
 ```kotlin
-IO<Throwable, Int> { throw RuntimeException("Boom!") }
+IO<Int> { throw RuntimeException("Boom!") }
   .unsafeRunAsync { result ->
     result.fold({ println("Error") }, { println(it.toString()) })
   }
 ```
+
+### unsafeRunAsyncCancellable
+
+Same as `unsafeRunAsync` except it returns a cancellation token. Upon invokation the cancellation token stops the current run for the `IO`. 
+
+```
+val cancel = myExpensiveIO
+  .unsafeRunAsyncCancellable { result ->
+    result.fold({ println("Error") }, { println(it.toString()) })
+  }
+  
+cancel()
+```
+
+It is important to know that cancelation can only be applied across operator boundaries, i.e. a blocking operation like `Thread.sleep` cannot be cancelled. Use helpers like `IO.sleep` instead!
 
 ### unsafeRunTimed
 
@@ -80,7 +95,7 @@ If your multithreaded program deadlocks, this function call is a good suspect.
 If your multithreaded program halts and never completes, this function call is a good suspect.
 
 ```kotlin
-IO<Throwable, Int> { throw RuntimeException("Boom!") }
+IO<Int> { throw RuntimeException("Boom!") }
   .attempt()
   .unsafeRunTimed(100.milliseconds)
 ```
@@ -103,7 +118,7 @@ If your multithreaded program deadlocks, this function call is a good suspect.
 If your multithreaded program halts and never completes, this function call is a good suspect.
 
 ```kotlin
-IO<Throwable, Int> { throw RuntimeException("Boom!") }
+IO<Int> { throw RuntimeException("Boom!") }
   .attempt()
   .unsafeRunSync()
 ```
@@ -150,7 +165,7 @@ IO { 1 }
 ```
 
 ```kotlin
-IO<Throwable, Int> { throw RuntimeException("Boom!") }
+IO<Int> { throw RuntimeException("Boom!") }
   .attempt()
   .unsafeRunSync()
 ```
@@ -184,7 +199,7 @@ IO.defer { IO.just(1) }
 
 ### async
 
-Mainly used to integrate with existing frameworks that have asynchronous calls.
+Mainly used to integrate with existing frameworks that have asynchronous calls. If the frameworks allow cancelation, use `cancelable` instead.
 
 It requires a function that provides a callback parameter and it expects for the user to start an operation using the other framework.
 The callback parameter has to be invoked with an `Either<Throwable, A>` once the other framework has completed its execution.
@@ -204,6 +219,32 @@ IO.async<Int> { callback ->
 }
   .attempt()
   .unsafeRunSync()
+```
+
+## cancelable
+
+Same as `async`, it's used to integrate with existing frameworks. The unique difference is that the `cancelable` block requires returning an `IO` that'll be executed whe the whole `IO` operation is canceled.
+
+```kotlin
+val cancel = IO.cancelable<Int> { callback ->
+    val subscription = myObservable.subscribe { callback(it.right()) }
+    IO { subscription.cancel() }
+}
+  .attempt()
+  .unsafeRunAsyncCancellable { }
+  
+cancel() // stops both the local IO and myObservable
+```
+
+## sleep
+
+Sleeps for a given duration without blocking a thread.
+
+```kotlin
+val result =
+  IO.sleep(3.seconds).flatMap {
+    IO.effect { println("Hello World!") }
+  }.unsafeRunSync()
 ```
 
 ## Effect Comprehensions
@@ -230,24 +271,9 @@ IO.fx {
 }.attempt().unsafeRunSync()
 ```
 
-## Syntax
-
-### A#liftIO
-
-Puts the value `A` inside an `IO<Throwable, A>` using `just`.
-
-```kotlin:ank
-import arrow.fx.*
-
-1.liftIO()
-  .attempt()
-  .unsafeRunSync()
-```
-
 ## Common operators
 
 IO implements all the operators common to all instances of [`MonadError`]({{ '/docs/arrow/typeclasses/monaderror' | relative_url }}). Those include `map`, `flatMap`, and `handleErrorWith`.
-
 
 ### Supported Type Classes
 

@@ -13,13 +13,8 @@ import kotlin.coroutines.Continuation
 import kotlin.coroutines.CoroutineContext
 import kotlin.coroutines.startCoroutine
 
-internal fun <F> Concurrent<F, Throwable>.ConcurrentSleep(duration: Duration): Kind<F, Unit> = cancelable { cb ->
+internal fun <F> Concurrent<F>.ConcurrentSleep(duration: Duration): Kind<F, Unit> = cancelable { cb ->
   val cancelRef = scheduler.schedule(ShiftTick(dispatchers().default(), cb), duration.amount, duration.timeUnit)
-  later { cancelRef.cancel(false); Unit }
-}
-
-internal fun <F, E> Concurrent<F, E>.ConcurrentSleep(duration: Duration, fe: (Throwable) -> E): Kind<F, Unit> = cancelable { cb ->
-  val cancelRef = scheduler.schedule(ShiftTick(dispatchers().default(), cb, fe), duration.amount, duration.timeUnit)
   later { cancelRef.cancel(false); Unit }
 }
 
@@ -41,10 +36,10 @@ internal val scheduler: ScheduledExecutorService by lazy {
  * As mentioned in [scheduler] no work should ever happen there.
  * So after sleeping we need to shift away to not keep that thread occupied.
  */
-internal class ShiftTick<E>(
+internal class ShiftTick(
   private val ctx: CoroutineContext,
-  private val cb: (Either<E, Unit>) -> Unit,
-  private val fe: (Throwable) -> E
+  private val cb: (Either<Throwable, Unit>) -> Unit,
+  private val fe: (Throwable) -> Throwable
 ) : Runnable {
 
   override fun run() {
@@ -58,12 +53,6 @@ internal class ShiftTick<E>(
       ctx: CoroutineContext,
       cb: (Either<Throwable, Unit>) -> Unit
     ) = ShiftTick(ctx, cb, ::identity)
-
-    operator fun <E> invoke(
-      ctx: CoroutineContext,
-      cb: (Either<E, Unit>) -> Unit,
-      fe: (Throwable) -> E
-    ) = ShiftTick(ctx, cb, fe)
   }
 }
 

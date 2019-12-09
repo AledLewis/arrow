@@ -1,6 +1,7 @@
 package arrow.fx.internal
 
 import arrow.core.Either
+import arrow.core.nonFatalOrThrow
 import arrow.fx.CancelToken
 import arrow.fx.IO
 import arrow.fx.IOConnection
@@ -11,7 +12,7 @@ import arrow.fx.IORunLoop
 import arrow.fx.fix
 import arrow.fx.flatMap
 import arrow.fx.typeclasses.ExitCase
-import java.util.concurrent.atomic.AtomicBoolean
+import kotlinx.atomicfu.atomic
 
 internal object IOBracket {
 
@@ -45,6 +46,11 @@ internal object IOBracket {
     val cb: (Either<Throwable, B>) -> Unit
   ) : (Either<Throwable, A>) -> Unit {
 
+    // This runnable is a dirty optimization to avoid some memory allocations;
+    // This class switches from being a Callback to a Runnable, but relies on the internal IO callback protocol to be
+    // respected (called at most once).
+    private var result: Either<Throwable, A>? = null
+
     override fun invoke(ea: Either<Throwable, A>) {
       // Introducing a light async boundary, otherwise executing the required
       // logic directly will yield a StackOverflowException
@@ -54,14 +60,19 @@ internal object IOBracket {
             val a = ea.b
             val frame = BracketReleaseFrame<A, B>(a, release)
             val onNext = {
-              val fb = use(a)
-              IO.Bind<Throwable, B, B>(fb.fix(), frame)
+              val fb = try {
+                use(a)
+              } catch (e: Throwable) {
+                IO.raiseError(e.nonFatalOrThrow())
+              }
+
+              IO.Bind(fb.fix(), frame)
             }
 
             // Registering our cancelable token ensures that in case cancellation is detected, release gets called
             deferredRelease.complete(frame.cancel)
             // Actual execution
-            IORunLoop.startCancelable<Throwable, B>(onNext(), conn, cb)
+            IORunLoop.startCancelable(onNext(), conn, cb)
           }
           is Either.Left -> cb(ea)
         }
@@ -101,7 +112,7 @@ internal object IOBracket {
 
     // Guard used for thread-safety, to ensure the idempotency
     // of the release; otherwise `release` can be called twice
-    private val waitsForResult = AtomicBoolean(true)
+    private val waitsForResult = atomic(true)
 
     abstract fun release(c: ExitCase<Throwable>): CancelToken<IOPartialOf<Throwable>>
 

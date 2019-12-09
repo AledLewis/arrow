@@ -1,6 +1,7 @@
 package arrow.mtl
 
 import arrow.Kind
+import arrow.core.Const
 import arrow.core.Either
 import arrow.core.ForId
 import arrow.core.ForNonEmptyList
@@ -9,6 +10,7 @@ import arrow.core.NonEmptyList
 import arrow.core.None
 import arrow.core.Option
 import arrow.core.Some
+import arrow.core.const
 import arrow.core.extensions.const.divisible.divisible
 import arrow.core.extensions.id.monad.monad
 import arrow.core.extensions.monoid
@@ -40,18 +42,12 @@ import arrow.test.laws.FunctorFilterLaws
 import arrow.test.laws.MonoidKLaws
 import arrow.test.laws.SemigroupKLaws
 import arrow.test.laws.TraverseFilterLaws
-import arrow.typeclasses.Const
 import arrow.typeclasses.Eq
 import arrow.typeclasses.Monad
-import arrow.typeclasses.const
-import arrow.typeclasses.value
 import io.kotlintest.properties.forAll
-import io.kotlintest.runner.junit4.KotlinTestRunner
-import org.junit.runner.RunWith
 
 typealias OptionTNel = Kind<OptionTPartialOf<ForNonEmptyList>, Int>
 
-@RunWith(KotlinTestRunner::class)
 class OptionTTest : UnitSpec() {
 
   fun <A> EQ(): Eq<Kind<OptionTPartialOf<A>, Int>> = Eq { a, b ->

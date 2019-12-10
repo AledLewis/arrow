@@ -33,7 +33,6 @@ import arrow.fx.typeclasses.ExitCase
 import arrow.fx.typeclasses.Fiber
 import kotlin.coroutines.CoroutineContext
 import kotlin.coroutines.resume
-import kotlin.coroutines.resumeWithException
 import kotlin.coroutines.suspendCoroutine
 
 class ForIO private constructor() {
@@ -129,6 +128,11 @@ sealed class IO<out E, out A> : IOOf<E, A> {
 
     fun <E, A> effect(fe: (Throwable) -> E, f: suspend () -> A): IO<E, A> =
       Effect(null, f).mapError(fe)
+
+    fun <E, A> effectE(fe: (Throwable) -> E, f: suspend () -> Either<E, A>): IO<E, A> =
+      Effect(null, f)
+        .mapError(fe)
+        .flatMap { it.fold(Companion::raiseError, Companion::just) }
 
     operator fun <A> invoke(ctx: CoroutineContext, f: suspend () -> A): IO<Throwable, A> =
       Effect(ctx, f)
@@ -351,9 +355,6 @@ sealed class IO<out E, out A> : IOOf<E, A> {
     fun <A> cancelableF(cb: ((Either<Throwable, A>) -> Unit) -> IOOf<Throwable, CancelToken<IOPartialOf<Throwable>>>): IO<Throwable, A> =
       cancelableF(::identity, cb)
 
-    val rethrow: (Throwable) -> Nothing =
-      { t -> throw t }
-
     /**
      * Create an [IO] that executes an asynchronous process on evaluation.
      * This combinator can be used to wrap callbacks or other similar impure code **that require no cancellation code**.
@@ -450,7 +451,7 @@ sealed class IO<out E, out A> : IOOf<E, A> {
      * ```
      */
     val lazy: IO<Nothing, Unit> =
-      effect(rethrow) { }
+      later { Unit }
 
     /**
      * Evaluates an [Eval] instance within a safe [IO] context.
@@ -471,7 +472,7 @@ sealed class IO<out E, out A> : IOOf<E, A> {
     fun <A> eval(eval: Eval<A>): IO<Nothing, A> =
       when (eval) {
         is Eval.Now -> just(eval.value)
-        else -> effect(rethrow) { eval.value() }
+        else -> later { eval.value() }
       }
 
     /**
@@ -542,9 +543,9 @@ sealed class IO<out E, out A> : IOOf<E, A> {
    *
    * **BEWARE** this does **not** support cancelation since Kotlin has no cancelation support for `suspend` on the language level.
    */
-  suspend fun suspended(): A = suspendCoroutine { cont ->
+  suspend fun suspended(): Either<E, A> = suspendCoroutine { cont ->
     IORunLoop.start(this) {
-      it.fold({ cont.resumeWithException(UncaughtError(it).asException()) }, cont::resume)
+      cont.resume(it)
     }
   }
 
@@ -570,7 +571,7 @@ sealed class IO<out E, out A> : IOOf<E, A> {
     Map(this, f, 0)
 
   open fun <E2> mapError(f: (E) -> E2): IO<E2, A> =
-    Bind<E, A, E2, A>(this, IOFrame.Companion.MapError(f))
+    Bind(this, IOFrame.Companion.MapError(f))
 
   /**
    * Continue the evaluation on provided [CoroutineContext]
@@ -798,13 +799,6 @@ sealed class IO<out E, out A> : IOOf<E, A> {
 
     override fun unsafeRunTimedTotal(limit: Duration): Option<A> = throw AssertionError("Unreachable")
   }
-}
-
-data class UncaughtError<E>(val e: E) {
-  fun asException(): Exception =
-    UncaughtErrorException("There was an unhandled error $e")
-
-  class UncaughtErrorException(s: String) : Exception(s)
 }
 
 /**
@@ -1116,5 +1110,9 @@ fun <A> IOOf<Throwable, A>.fork(ctx: CoroutineContext): IO<Throwable, Fiber<IOPa
   // A new IOConnection, because its cancellation is now decoupled from our current one.
   val conn = IOConnection()
   IORunLoop.startCancelable(IOForkedStart(this, ctx), conn, promise::complete)
-  cb(Either.Right(IOFiber(promise, conn)))
+  cb(Right(IOFiber(promise, conn)))
+}
+
+suspend fun <A> IOOf<Nothing, A>.suspended(): A = suspendCoroutine { cont ->
+  IORunLoop.start(this) { it.fold(::identity, cont::resume) }
 }

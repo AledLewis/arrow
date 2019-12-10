@@ -27,7 +27,7 @@ class RefTest : UnitSpec() {
         .sequence(IO.applicative())
         .flatMap { r.get() }
         .fix()
-        .unsafeRunSync() shouldBe finalValue
+        .unsafeRunSyncGet() shouldBe finalValue
     }
 
     "set get - successful" {

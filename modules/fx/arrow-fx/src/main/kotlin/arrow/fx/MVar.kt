@@ -30,11 +30,11 @@ interface MVar<F, A> {
    *
    * mvar.empty<Int>().flatMap { v ->
    *   v.isEmpty()
-   * }.unsafeRunSync() == true
+   * }.unsafeRunSyncGet() == true
    *
    * mvar.just(10).flatMap { v ->
    *   v.isEmpty()
-   * }.unsafeRunSync() == false
+   * }.unsafeRunSyncGet() == false
    * //sampleEnd
    * }
    *```
@@ -55,11 +55,11 @@ interface MVar<F, A> {
    *
    * mvar.just(10).flatMap { v ->
    *   v.isNotEmpty()
-   * }.unsafeRunSync() == true
+   * }.unsafeRunSyncGet() == true
    *
    * mvar.empty<Int>().flatMap { v ->
    *   v.isNotEmpty()
-   * }.unsafeRunSync() == false
+   * }.unsafeRunSyncGet() == false
    * //sampleEnd
    * }
    *```
@@ -83,7 +83,7 @@ interface MVar<F, A> {
    *   v.put(5).flatMap {
    *     v.take()
    *   }
-   * }.unsafeRunSync() == 5
+   * }.unsafeRunSyncGet() == 5
    * //sampleEnd
    * }
    *```
@@ -105,11 +105,11 @@ interface MVar<F, A> {
    *
    * mvar.empty<Int>().flatMap { v ->
    *  v.tryPut(5)
-   * }.unsafeRunSync() == true
+   * }.unsafeRunSyncGet() == true
    *
    * mvar.just(5).flatMap { v ->
    *   v.tryPut(10)
-   * }.unsafeRunSync() == false
+   * }.unsafeRunSyncGet() == false
    * //sampleEnd
    * }
    *```
@@ -130,7 +130,7 @@ interface MVar<F, A> {
    *
    * mvar.just(5).flatMap { v ->
    * v.take()
-   * }.unsafeRunSync() == 5
+   * }.unsafeRunSyncGet() == 5
    *
    * mvar.empty<Int>().flatMap { v ->
    * v.take()
@@ -156,11 +156,11 @@ interface MVar<F, A> {
    *
    * mvar.just(5).flatMap { v ->
    *   v.tryTake()
-   * }.unsafeRunSync() == Some(5)
+   * }.unsafeRunSyncGet() == Some(5)
    *
    * mvar.empty<Int>().flatMap { v ->
    *   v.tryTake()
-   * }.unsafeRunSync() == None
+   * }.unsafeRunSyncGet() == None
    * //sampleEnd
    * }
    *```
@@ -182,7 +182,7 @@ interface MVar<F, A> {
    *
    * mvar.just(5).flatMap { v ->
    *   v.read()
-   * }.unsafeRunSync() == 5
+   * }.unsafeRunSyncGet() == 5
    *
    * mvar.just(5).flatMap { v ->
    *   v.read().flatMap { value ->
@@ -190,7 +190,7 @@ interface MVar<F, A> {
    *       value toT isNotEmpty
    *     }
    *   }
-   * }.unsafeRunSync() == 5 toT true
+   * }.unsafeRunSyncGet() == 5 toT true
    *
    * mvar.empty<Int>().flatMap { v ->
    *   v.read()

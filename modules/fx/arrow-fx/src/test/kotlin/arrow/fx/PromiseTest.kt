@@ -35,7 +35,7 @@ class PromiseTest : UnitSpec() {
             p.complete(a).flatMap {
               p.get()
             }
-          }.unsafeRunSync() == a
+          }.unsafeRunSyncGet() == a
         }
       }
 
@@ -47,7 +47,7 @@ class PromiseTest : UnitSpec() {
                 .attempt()
                 .product(p.get())
             }
-          }.unsafeRunSync() == Tuple2(Left(Promise.AlreadyFulfilled), a)
+          }.unsafeRunSyncGet() == Tuple2(Left(Promise.AlreadyFulfilled), a)
         }
       }
 
@@ -57,7 +57,7 @@ class PromiseTest : UnitSpec() {
             p.tryComplete(a).flatMap { didComplete ->
               p.get().tupleLeft(didComplete)
             }
-          }.unsafeRunSync() == Tuple2(true, a)
+          }.unsafeRunSyncGet() == Tuple2(true, a)
         }
       }
 
@@ -69,7 +69,7 @@ class PromiseTest : UnitSpec() {
                 p.get().tupleLeft(didComplete)
               }
             }
-          }.unsafeRunSync() == Tuple2(false, a)
+          }.unsafeRunSyncGet() == Tuple2(false, a)
         }
       }
 
@@ -79,7 +79,7 @@ class PromiseTest : UnitSpec() {
             p.error(error).flatMap {
               p.get().attempt()
             }
-          }.unsafeRunSync() == Left(error)
+          }.unsafeRunSyncGet() == Left(error)
         }
       }
 
@@ -90,7 +90,7 @@ class PromiseTest : UnitSpec() {
               p.error(RuntimeException("Boom!")).attempt()
                 .product(p.get().attempt())
             }
-          }.unsafeRunSync() == Tuple2(Left(Promise.AlreadyFulfilled), Left(error))
+          }.unsafeRunSyncGet() == Tuple2(Left(Promise.AlreadyFulfilled), Left(error))
         }
       }
 
@@ -101,7 +101,7 @@ class PromiseTest : UnitSpec() {
               p.get().attempt()
                 .tupleLeft(didError)
             }
-          }.unsafeRunSync() == Tuple2(true, Left(error))
+          }.unsafeRunSyncGet() == Tuple2(true, Left(error))
         }
       }
 
@@ -114,7 +114,7 @@ class PromiseTest : UnitSpec() {
                   .tupleLeft(didComplete)
               }
             }
-          }.unsafeRunSync() == Tuple2(false, Left(error))
+          }.unsafeRunSyncGet() == Tuple2(false, Left(error))
         }
       }
 
@@ -131,11 +131,11 @@ class PromiseTest : UnitSpec() {
               }
             }
           }
-        }.unsafeRunSync() shouldBe 2
+        }.unsafeRunSyncGet() shouldBe 2
       }
 
       "$label - tryGet returns None for empty Promise" {
-        promise.flatMap { p -> p.tryGet() }.unsafeRunSync() shouldBe None
+        promise.flatMap { p -> p.tryGet() }.unsafeRunSyncGet() shouldBe None
       }
 
       "$label - tryGet returns Some for completed promise" {
@@ -144,7 +144,7 @@ class PromiseTest : UnitSpec() {
             p.complete(a).flatMap {
               p.tryGet()
             }
-          }.unsafeRunSync() == Some(a)
+          }.unsafeRunSyncGet() == Some(a)
         }
       }
     }

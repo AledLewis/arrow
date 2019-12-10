@@ -37,7 +37,7 @@ class QueueTest : UnitSpec() {
             !l.traverse(IO.applicative(), q::offer)
             val nl = !(1..l.size).toList().traverse(IO.applicative()) { q.take() }
             nl.fix()
-          }.unsafeRunSync() == l
+          }.unsafeRunSyncGet() == l
         }
       }
 
@@ -52,7 +52,7 @@ class QueueTest : UnitSpec() {
             val second = !q.take()
             val third = !q.take()
             Tuple3(first, second, third)
-          }.unsafeRunSync() == t
+          }.unsafeRunSyncGet() == t
         }
       }
 
@@ -89,7 +89,7 @@ class QueueTest : UnitSpec() {
             val first = !q.take().fork(ctx)
             !q.offer(i)
             !first.join()
-          }.unsafeRunSync() == i
+          }.unsafeRunSyncGet() == i
         }
       }
 
@@ -107,7 +107,7 @@ class QueueTest : UnitSpec() {
             val secondValue = !second.join()
             val thirdValue = !third.join()
             setOf(firstValue, secondValue, thirdValue)
-          }.unsafeRunSync() == setOf(t.a, t.b, t.c)
+          }.unsafeRunSyncGet() == setOf(t.a, t.b, t.c)
         }
       }
 
@@ -120,7 +120,7 @@ class QueueTest : UnitSpec() {
             val first = !q.take()
             val second = !q.take()
             Tuple2(first, second)
-          }.unsafeRunSync() == t
+          }.unsafeRunSyncGet() == t
         }
       }
 
@@ -135,7 +135,7 @@ class QueueTest : UnitSpec() {
             val second = !q.take()
             val third = !q.take()
             setOf(first, second, third)
-          }.unsafeRunSync() == setOf(t.a, t.b, t.c)
+          }.unsafeRunSyncGet() == setOf(t.a, t.b, t.c)
         }
       }
 
@@ -146,7 +146,7 @@ class QueueTest : UnitSpec() {
             !q.offer(i)
             !q.shutdown()
             !q.take()
-          }.attempt().unsafeRunSync() == Left(QueueShutdown)
+          }.attempt().unsafeRunSyncGet() == Left(QueueShutdown)
         }
       }
 
@@ -156,7 +156,7 @@ class QueueTest : UnitSpec() {
             val q = !queue(10)
             !q.shutdown()
             !q.offer(i)
-          }.attempt().unsafeRunSync() == Left(QueueShutdown)
+          }.attempt().unsafeRunSyncGet() == Left(QueueShutdown)
         }
       }
 
@@ -166,7 +166,7 @@ class QueueTest : UnitSpec() {
           val t = !q.take().fork(ctx)
           !q.shutdown()
           !t.join()
-        }.attempt().unsafeRunSync() shouldBe Left(QueueShutdown)
+        }.attempt().unsafeRunSyncGet() shouldBe Left(QueueShutdown)
       }
 
       "$label - joining a forked offer call made to a shut down queue creates a QueueShutdown error" {
@@ -177,7 +177,7 @@ class QueueTest : UnitSpec() {
             val o = !q.offer(i).fork(ctx)
             !q.shutdown()
             !o.join()
-          }.attempt().unsafeRunSync() == Left(QueueShutdown)
+          }.attempt().unsafeRunSyncGet() == Left(QueueShutdown)
         }
       }
 

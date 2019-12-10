@@ -47,11 +47,11 @@ import io.kotlintest.properties.Gen
 class WriterTTest : UnitSpec() {
 
   private fun IOEQ(): Eq<Kind<WriterTPartialOf<ForIO, Int>, Int>> = Eq { a, b ->
-    a.value().attempt().unsafeRunSync() == b.value().attempt().unsafeRunSync()
+    a.value().attempt().unsafeRunSyncGet() == b.value().attempt().unsafeRunSync()
   }
 
   private fun IOEitherEQ(): Eq<Kind<WriterTPartialOf<ForIO, Int>, Either<Throwable, Int>>> = Eq { a, b ->
-    a.value().attempt().unsafeRunSync() == b.value().attempt().unsafeRunSync()
+    a.value().attempt().unsafeRunSyncGet() == b.value().attempt().unsafeRunSync()
   }
 
   init {

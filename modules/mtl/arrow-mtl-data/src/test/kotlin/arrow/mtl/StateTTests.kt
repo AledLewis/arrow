@@ -45,11 +45,11 @@ class StateTTests : UnitSpec() {
   }
 
   private fun IOEQ(): Eq<StateTOf<ForIO, Int, Int>> = Eq { a, b ->
-    a.runM(IO.monad(), 1).attempt().unsafeRunSync() == b.runM(IO.monad(), 1).attempt().unsafeRunSync()
+    a.runM(IO.monad(), 1).attempt().unsafeRunSyncGet() == b.runM(IO.monad(), 1).attempt().unsafeRunSync()
   }
 
   private fun IOEitherEQ(): Eq<StateTOf<ForIO, Int, Either<Throwable, Int>>> = Eq { a, b ->
-    a.runM(IO.monad(), 1).attempt().unsafeRunSync() == b.runM(IO.monad(), 1).attempt().unsafeRunSync()
+    a.runM(IO.monad(), 1).attempt().unsafeRunSyncGet() == b.runM(IO.monad(), 1).attempt().unsafeRunSync()
   }
 
   init {

@@ -59,7 +59,7 @@ class OptionTTest : UnitSpec() {
   }
 
   private fun IOEitherEQ(): Eq<Kind<OptionTPartialOf<ForIO>, Either<Throwable, Int>>> = Eq { a, b ->
-    a.value().attempt().unsafeRunSync() == b.value().attempt().unsafeRunSync()
+    a.value().attempt().unsafeRunSyncGet() == b.value().attempt().unsafeRunSync()
   }
 
   val NELM: Monad<ForNonEmptyList> = NonEmptyList.monad()

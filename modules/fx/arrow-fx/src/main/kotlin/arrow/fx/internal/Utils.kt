@@ -150,7 +150,7 @@ object Platform {
     }
   }
 
-  fun <E, A> unsafeResync(ioa: IO<E, A>, limit: Duration): Option<A> {
+  fun <E, A> unsafeResync(ioa: IO<E, A>, limit: Duration): Option<Either<E, A>> {
     val latch = OneShotLatch()
     var ref: Either<E, A>? = null
     ioa.unsafeRunAsync { a ->
@@ -166,8 +166,8 @@ object Platform {
 
     return when (val eitherRef = ref) {
       null -> None
-      is Either.Left -> (eitherRef.a as? Throwable)?.let { throw it } ?: None
-      is Either.Right -> Some(eitherRef.b)
+      is Either.Left -> (eitherRef.a as? Throwable)?.let { throw it } ?: Some(eitherRef)
+      is Either.Right -> Some(eitherRef)
     }
   }
 

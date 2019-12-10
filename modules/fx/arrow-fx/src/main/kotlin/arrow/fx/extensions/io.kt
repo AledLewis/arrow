@@ -34,6 +34,7 @@ import arrow.fx.typeclasses.Proc
 import arrow.fx.typeclasses.ProcF
 import arrow.fx.typeclasses.UnsafeCancellableRun
 import arrow.fx.typeclasses.UnsafeRun
+import arrow.fx.unsafeRunSyncGet
 import arrow.typeclasses.Applicative
 import arrow.typeclasses.ApplicativeError
 import arrow.typeclasses.Apply
@@ -255,20 +256,16 @@ interface IOMonoid<A> : Monoid<IO<Throwable, A>>, IOSemigroup<A> {
 @extension
 interface IOUnsafeRun : UnsafeRun<IOPartialOf<Throwable>> {
 
-  override suspend fun <A> unsafe.runBlocking(fa: () -> Kind<IOPartialOf<Throwable>, A>): A = fa().fix().unsafeRunSync()
+  override suspend fun <A> unsafe.runBlocking(fa: () -> Kind<IOPartialOf<Throwable>, A>): A =
+    fa().fix().unsafeRunSyncGet()
 
   override suspend fun <A> unsafe.runNonBlocking(fa: () -> Kind<IOPartialOf<Throwable>, A>, cb: (Either<Throwable, A>) -> Unit) =
     fa().fix().unsafeRunAsync(cb)
 }
 
 @extension
-interface IOUnsafeCancellableRun : UnsafeCancellableRun<IOPartialOf<Throwable>> {
-  override suspend fun <A> unsafe.runBlocking(fa: () -> Kind<IOPartialOf<Throwable>, A>): A = fa().fix().unsafeRunSync()
-
-  override suspend fun <A> unsafe.runNonBlocking(fa: () -> Kind<IOPartialOf<Throwable>, A>, cb: (Either<Throwable, A>) -> Unit) =
-    fa().fix().unsafeRunAsync(cb)
-
-  override suspend fun <A> unsafe.runNonBlockingCancellable(onCancel: OnCancel, fa: () -> Kind<IOPartialOf<Throwable>, A>, cb: (Either<Throwable, A>) -> Unit): Disposable =
+interface IOUnsafeCancellableRun : UnsafeCancellableRun<IOPartialOf<Throwable>>, IOUnsafeRun {
+  override suspend fun <A> unsafe.runNonBlockingCancellable(onCancel: OnCancel, fa: () -> IOOf<Throwable, A>, cb: (Either<Throwable, A>) -> Unit): Disposable =
     fa().fix().unsafeRunAsyncCancellable(onCancel, cb)
 }
 

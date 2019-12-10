@@ -99,7 +99,7 @@ class SemaphoreTest : UnitSpec() {
           semaphore(i)
             .map { false }
             .handleError { true }
-            .unsafeRunSync()
+            .unsafeRunSyncGet()
         }
       }
 
@@ -115,7 +115,7 @@ class SemaphoreTest : UnitSpec() {
                 }
               }
             }
-          }.unsafeRunSync()
+          }.unsafeRunSyncGet()
         }
       }
 

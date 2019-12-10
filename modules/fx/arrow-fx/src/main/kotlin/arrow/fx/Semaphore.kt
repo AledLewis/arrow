@@ -83,7 +83,7 @@ interface Semaphore<F> {
    *     s.acquireN(5).flatMap {
    *       s.available()
    *     }
-   *   }.unsafeRunSync() == 0L
+   *   }.unsafeRunSyncGet() == 0L
    *   //sampleEnd
    * }
    * ```
@@ -113,11 +113,11 @@ interface Semaphore<F> {
    *
    *   semaphore.flatMap { s ->
    *     s.tryAcquireN(6)
-   *   }.unsafeRunSync() == false
+   *   }.unsafeRunSyncGet() == false
    *
    *   semaphore.flatMap { s ->
    *     s.tryAcquireN(5)
-   *   }.unsafeRunSync() == true
+   *   }.unsafeRunSyncGet() == true
    *   //sampleEnd
    * }
    * ```
@@ -150,7 +150,7 @@ interface Semaphore<F> {
    *         s.available()
    *       }
    *     }
-   *   }.unsafeRunSync() == 3L
+   *   }.unsafeRunSyncGet() == 3L
    *   //sampleEnd
    * }
    * ```

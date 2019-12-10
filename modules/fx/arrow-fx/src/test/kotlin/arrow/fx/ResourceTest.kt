@@ -1,6 +1,7 @@
 package arrow.fx
 
 import arrow.Kind
+import arrow.core.Right
 import arrow.core.Some
 import arrow.core.extensions.monoid
 import arrow.core.extensions.list.traverse.traverse
@@ -21,10 +22,10 @@ class ResourceTest : UnitSpec() {
   init {
 
     val EQ = Eq<Kind<ResourcePartialOf<IOPartialOf<Throwable>, Throwable>, Int>> { a, b ->
-      val tested: IO<Throwable, Int> = a.fix().invoke { IO.just(1) }.fix()
+      val tested = a.fix().invoke { IO.just(1) }.fix()
       val expected = b.fix().invoke { IO.just(1) }.fix()
-      val compare = IO.applicative().map(tested, expected) { (t, e) -> t == e }.fix()
-      compare.unsafeRunTimed(5.seconds) == Some(true)
+      val compare = IO.applicative().map<Int, Int, Boolean>(tested, expected) { (t, e) -> t == e }.fix()
+      compare.unsafeRunTimed(5.seconds) == Some(Right(true))
     }
 
     testLaws(

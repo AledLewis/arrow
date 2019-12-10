@@ -49,11 +49,11 @@ class KleisliTest : UnitSpec() {
   }
 
   private fun IOEQ(): Eq<Kind<KleisliPartialOf<ForIO, Int>, Int>> = Eq { a, b ->
-    a.run(1).attempt().unsafeRunSync() == b.run(1).attempt().unsafeRunSync()
+    a.run(1).attempt().unsafeRunSyncGet() == b.run(1).attempt().unsafeRunSync()
   }
 
   private fun IOEitherEQ(): Eq<Kind<KleisliPartialOf<ForIO, Int>, Either<Throwable, Int>>> = Eq { a, b ->
-    a.run(1).attempt().unsafeRunSync() == b.run(1).attempt().unsafeRunSync()
+    a.run(1).attempt().unsafeRunSyncGet() == b.run(1).attempt().unsafeRunSync()
   }
 
   init {

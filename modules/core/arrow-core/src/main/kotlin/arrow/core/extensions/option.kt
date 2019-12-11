@@ -33,6 +33,7 @@ import arrow.typeclasses.Monad
 import arrow.typeclasses.MonadCombine
 import arrow.typeclasses.MonadError
 import arrow.typeclasses.MonadFilter
+import arrow.typeclasses.MonadFx
 import arrow.typeclasses.MonadSyntax
 import arrow.typeclasses.Monoid
 import arrow.typeclasses.MonoidK
@@ -206,6 +207,15 @@ interface OptionMonad : Monad<ForOption> {
 
   override fun <A, B> OptionOf<Either<A, B>>.select(f: OptionOf<(A) -> B>): OptionOf<B> =
     fix().optionSelect(f)
+
+  override val fx: MonadFx<ForOption>
+    get() = OptionFxMonad
+}
+
+internal object OptionFxMonad : MonadFx<ForOption> {
+  override val M: Monad<ForOption> = Option.monad()
+  override fun <A> monad(c: suspend MonadSyntax<ForOption>.() -> A): Option<A> =
+    super.monad(c).fix()
 }
 
 @extension
@@ -245,7 +255,7 @@ interface OptionMonoidK : MonoidK<ForOption> {
 }
 
 fun <A, G, B> OptionOf<A>.traverse(GA: Applicative<G>, f: (A) -> Kind<G, B>): Kind<G, Option<B>> = GA.run {
-  fix().fold({ just(None) }, { f(it).map(::Some) })
+  fix().fold({ just(None) }, { f(it).map { Some(it) } })
 }
 
 fun <A, G> OptionOf<Kind<G, A>>.sequence(GA: Applicative<G>): Kind<G, Option<A>> =

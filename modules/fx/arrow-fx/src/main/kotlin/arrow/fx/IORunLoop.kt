@@ -319,13 +319,13 @@ internal object IORunLoop {
    * anything — an optimization for `handleError`.
    */
   private fun popNextBind(bFirst: BindF?, bRest: CallStack?): BindF? =
-    if ((bFirst != null) && bFirst !is IOFrame.Companion.ErrorHandler)
+    if ((bFirst != null) && bFirst !is IOFrame.Companion.ErrorHandler<*, *, *>)
       bFirst
     else if (bRest != null) {
       var cursor: BindF? = null
       while (cursor == null && bRest.isNotEmpty()) {
         val ref = bRest.pop()
-        if (ref !is IOFrame.Companion.ErrorHandler) cursor = ref
+        if (ref !is IOFrame.Companion.ErrorHandler<*, *, *>) cursor = ref
       }
       cursor
     } else {
@@ -437,7 +437,8 @@ internal object IORunLoop {
         canCall = false
         result.fold(
           { a -> IO.just(a) },
-          { e -> IO.RaiseError(e) }
+          //TODO here is an async error, calling `asyncErrorHandler` here will break Bracket's resource safety guarantee
+          { e: Throwable -> IO.RaiseError(e) }
         ).let { r ->
           if (shouldTrampoline) {
             this.value = r

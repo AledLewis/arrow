@@ -119,7 +119,7 @@ interface MonoKEffect : Effect<ForMonoK>, MonoKAsync {
 @extension
 interface MonoKConcurrentEffect : ConcurrentEffect<ForMonoK>, MonoKEffect {
   override fun <A> MonoKOf<A>.runAsyncCancellable(cb: (Either<Throwable, A>) -> MonoKOf<Unit>): MonoK<Disposable> =
-    runAsyncCancellable(cb)
+    fix().runAsyncCancellable(cb)
 }
 
 @extension

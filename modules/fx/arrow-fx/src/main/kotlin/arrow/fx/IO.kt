@@ -20,6 +20,7 @@ import arrow.fx.IOFrame.Companion.RedeemWith
 import arrow.fx.OnCancel.Companion.CancellationException
 import arrow.fx.OnCancel.Silent
 import arrow.fx.OnCancel.ThrowCancellationException
+import arrow.fx.internal.BIOFiber
 import arrow.fx.internal.ForwardCancelable
 import arrow.fx.internal.IOBracket
 import arrow.fx.internal.IOFiber
@@ -30,6 +31,7 @@ import arrow.fx.internal.Platform.unsafeResync
 import arrow.fx.internal.ShiftTick
 import arrow.fx.internal.UnsafePromise
 import arrow.fx.internal.scheduler
+import arrow.fx.typeclasses.BiFiber
 import arrow.fx.typeclasses.Disposable
 import arrow.fx.typeclasses.Duration
 import arrow.fx.typeclasses.ExitCase
@@ -535,8 +537,7 @@ sealed class IO<out E, out A> : IOOf<E, A> {
      * ```
      */
     val never: IO<Nothing, Nothing> =
-      async<Nothing> { }
-        .mapError { throw it } // Never can never fail
+      Async(false) { _, _ -> }
   }
 
   /**
@@ -741,6 +742,11 @@ sealed class IO<out E, out A> : IOOf<E, A> {
     override fun unsafeRunTimedTotal(limit: Duration): Option<Either<E, A>> = Some(Right(a))
   }
 
+  //
+  internal data class Exception<E>(val exception: Throwable): IO<E, Nothing>() {
+    override fun unsafeRunTimedTotal(limit: Duration): Option<Either<E, Nothing>> = throw AssertionError("Unreachable")
+  }
+
   internal data class RaiseError<E>(val exception: E) : IO<E, Nothing>() {
     // Errors short-circuit
     override fun <B> map(f: (Nothing) -> B): IO<E, B> = this
@@ -776,8 +782,8 @@ sealed class IO<out E, out A> : IOOf<E, A> {
   }
 
   // Unsafe state
-  internal data class Bind<E, C, E2, out A>(val cont: IO<E, C>, val g: (C) -> IO<E2, A>) : IO<E2, A>() {
-    override fun unsafeRunTimedTotal(limit: Duration): Option<Either<E2, A>> = throw AssertionError("Unreachable")
+  internal data class Bind<E, A, E2, out B>(val cont: IO<E, A>, val g: (A) -> IO<E2, B>) : IO<E2, B>() {
+    override fun unsafeRunTimedTotal(limit: Duration): Option<Either<E2, B>> = throw AssertionError("Unreachable")
   }
 
   internal data class ContinueOn<E, A>(val cont: IO<E, A>, val cc: CoroutineContext) : IO<E, A>() {
@@ -838,7 +844,7 @@ sealed class IO<out E, out A> : IOOf<E, A> {
  *
  * @see handleErrorWith for a version that can resolve the error using an effect
  */
-fun <E, A> IOOf<E, A>.handleErrorWith(f: (E) -> IOOf<E, A>): IO<E, A> =
+fun <E, A, E2> IOOf<E, A>.handleErrorWith(f: (E) -> IOOf<E2, A>): IO<E2, A> =
   Bind(fix(), IOFrame.Companion.ErrorHandler(f))
 
 /**
@@ -860,7 +866,7 @@ fun <E, A> IOOf<E, A>.handleErrorWith(f: (E) -> IOOf<E, A>): IO<E, A> =
  * @see handleErrorWith for a version that can resolve the error using an effect
  */
 fun <E, A> IOOf<E, A>.handleError(f: (E) -> A): IO<E, A> =
-  handleErrorWith { e -> IO.Pure(f(e)) }
+  handleErrorWith { e -> IO.just(f(e)) }
 
 /**
  * Redeem an [IO] to an [IO] of [B] by resolving the error **or** mapping the value [A] to [B] **with** an effect.
@@ -1120,7 +1126,7 @@ fun <A> A.liftIO(): IO<Nothing, A> = IO.just(this)
  * @param ctx [CoroutineContext] to execute the source [IO] on.
  * @return [IO] with suspended execution of source [IO] on context [ctx].
  */
-fun <A> IOOf<Throwable, A>.fork(ctx: CoroutineContext): IO<Throwable, Fiber<IOPartialOf<Throwable>, A>> = async { cb ->
+fun <A> IOOf<Throwable, A>.oldFork(ctx: CoroutineContext): IO<Throwable, Fiber<IOPartialOf<Throwable>, A>> = async { cb ->
   val promise = UnsafePromise<Throwable, A>()
   // A new IOConnection, because its cancellation is now decoupled from our current one.
   val conn = IOConnection()
@@ -1128,7 +1134,16 @@ fun <A> IOOf<Throwable, A>.fork(ctx: CoroutineContext): IO<Throwable, Fiber<IOPa
   cb(Right(IOFiber(promise, conn)))
 }
 
-suspend fun <A> IOOf<Nothing, A>.suspended(): A = suspendCoroutine { cont ->
+fun <E, A> IOOf<E, A>.fork(ctx: CoroutineContext): IO<E, BiFiber<ForIO, E, A>> =
+  IO.Async(false) { _: IOConnection, cb: (Either<E, BiFiber<ForIO, E, A>>) -> Unit ->
+    val promise = UnsafePromise<E, A>()
+    // A new IOConnection, because its cancellation is now decoupled from our current one.
+    val conn = IOConnection()
+    IORunLoop.startCancelable(IOForkedStart(this, ctx), conn, promise::complete)
+    cb(Right(BIOFiber(promise, conn)))
+  }
+
+suspend fun <A> IOOf<Throwable, A>.oldSuspended(): A = suspendCoroutine { cont ->
   IORunLoop.start(this) { it.fold(::identity, cont::resume) }
 }
 

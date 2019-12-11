@@ -55,7 +55,7 @@ import arrow.fx.bracket as Bracket
 import arrow.fx.bracketCase as BracketCase
 import arrow.fx.guarantee as Guarantee
 import arrow.fx.guaranteeCase as GuaranteeCase
-import arrow.fx.fork as Fork
+import arrow.fx.oldFork as Fork
 
 @extension
 interface IOFunctor : Functor<IOPartialOf<Throwable>> {

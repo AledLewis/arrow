@@ -37,9 +37,9 @@ internal interface IOFrame<E, in A, out R> : (A) -> R {
       override fun recover(e: E): IO<E, B> = fe(e).fix()
     }
 
-    internal class ErrorHandler<E, A>(val fe: (E) -> IOOf<E, A>) : IOFrame<E, A, IO<E, A>> {
-      override fun invoke(a: A): IO<E, A> = Pure(a)
-      override fun recover(e: E): IO<E, A> = fe(e).fix()
+    internal class ErrorHandler<E, A, E2>(val fe: (E) -> IOOf<E2, A>) : IOFrame<E, A, IO<E2, A>> {
+      override fun invoke(a: A): IO<E2, A> = Pure(a)
+      override fun recover(e: E): IO<E2, A> = fe(e).fix()
     }
 
     internal class MapError<E, A, E2>(val fe: (E) -> (E2)) : IOFrame<E, A, IO<E2, A>> {

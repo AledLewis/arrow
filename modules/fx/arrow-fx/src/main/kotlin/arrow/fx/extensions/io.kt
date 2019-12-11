@@ -4,7 +4,7 @@ import arrow.Kind
 import arrow.core.Either
 import arrow.core.identity
 import arrow.extension
-
+import arrow.fx.BIO
 import arrow.fx.ForIO
 import arrow.fx.IO
 import arrow.fx.IODispatchers
@@ -13,8 +13,6 @@ import arrow.fx.OnCancel
 import arrow.fx.RacePair
 import arrow.fx.RaceTriple
 import arrow.fx.Timer
-import arrow.fx.extensions.io.concurrent.concurrent
-import arrow.fx.extensions.io.dispatchers.dispatchers
 import arrow.fx.fix
 import arrow.fx.typeclasses.Async
 import arrow.fx.typeclasses.Bracket
@@ -44,8 +42,14 @@ import arrow.typeclasses.Monoid
 import arrow.typeclasses.Semigroup
 import arrow.unsafe
 import kotlin.coroutines.CoroutineContext
-import arrow.fx.handleError as ioHandleError
-import arrow.fx.handleErrorWith as ioHandleErrorWith
+import arrow.fx.handleError as HandleError
+import arrow.fx.handleErrorWith as HandleErrorWith
+import arrow.fx.redeemWith as RedeemWith
+import arrow.fx.redeem as Redeem
+import arrow.fx.flatMap as FlatMap
+import arrow.fx.ap as Ap
+import arrow.fx.followedBy as FollowedBy
+import arrow.fx.attempt as Attempt
 
 @extension
 interface IOFunctor : Functor<ForIO> {
@@ -59,7 +63,7 @@ interface IOApply : Apply<ForIO> {
     fix().map(f)
 
   override fun <A, B> IOOf<A>.ap(ff: IOOf<(A) -> B>): IO<B> =
-    fix().ap(ff)
+    Ap(ff)
 }
 
 @extension
@@ -71,13 +75,13 @@ interface IOApplicative : Applicative<ForIO> {
     IO.just(a)
 
   override fun <A, B> IOOf<A>.ap(ff: IOOf<(A) -> B>): IO<B> =
-    fix().ap(ff)
+    Ap(ff)
 }
 
 @extension
 interface IOMonad : Monad<ForIO> {
   override fun <A, B> IOOf<A>.flatMap(f: (A) -> IOOf<B>): IO<B> =
-    fix().flatMap(f)
+    FlatMap(f)
 
   override fun <A, B> IOOf<A>.map(f: (A) -> B): IO<B> =
     fix().map(f)
@@ -92,16 +96,16 @@ interface IOMonad : Monad<ForIO> {
 @extension
 interface IOApplicativeError : ApplicativeError<ForIO, Throwable>, IOApplicative {
   override fun <A> IOOf<A>.attempt(): IO<Either<Throwable, A>> =
-    fix().attempt()
+    Attempt()
 
   override fun <A> IOOf<A>.handleErrorWith(f: (Throwable) -> IOOf<A>): IO<A> =
-    ioHandleErrorWith(f)
+    HandleErrorWith(f)
 
   override fun <A> IOOf<A>.handleError(f: (Throwable) -> A): IO<A> =
-    ioHandleError(f)
+    HandleError(f)
 
   override fun <A, B> IOOf<A>.redeem(fe: (Throwable) -> B, fb: (A) -> B): IO<B> =
-    fix().redeem(fe, fb)
+    Redeem(fe, fb)
 
   override fun <A> raiseError(e: Throwable): IO<A> =
     IO.raiseError(e)
@@ -113,19 +117,19 @@ interface IOMonadError : MonadError<ForIO, Throwable>, IOApplicativeError, IOMon
   override fun <A> just(a: A): IO<A> = IO.just(a)
 
   override fun <A, B> IOOf<A>.ap(ff: IOOf<(A) -> B>): IO<B> =
-    fix().ap(ff)
+    Ap(ff)
 
   override fun <A, B> IOOf<A>.map(f: (A) -> B): IO<B> =
     fix().map(f)
 
   override fun <A> IOOf<A>.attempt(): IO<Either<Throwable, A>> =
-    fix().attempt()
+    Attempt()
 
   override fun <A> IOOf<A>.handleErrorWith(f: (Throwable) -> IOOf<A>): IO<A> =
-    ioHandleErrorWith(f)
+    HandleErrorWith(f)
 
   override fun <A, B> IOOf<A>.redeemWith(fe: (Throwable) -> IOOf<B>, fb: (A) -> IOOf<B>): IO<B> =
-    fix().redeemWith(fe, fb)
+    RedeemWith(fe, fb)
 
   override fun <A> raiseError(e: Throwable): IO<A> =
     IO.raiseError(e)
@@ -199,11 +203,11 @@ interface IOConcurrent : Concurrent<ForIO>, IOAsync {
     IO.parMapN(this@parMapN, fa, fb, fc, f)
 }
 
-fun IO.Companion.concurrent(dispatchers: Dispatchers<ForIO>): Concurrent<ForIO> = object : IOConcurrent {
+fun BIO.Companion.concurrent(dispatchers: Dispatchers<ForIO>): Concurrent<ForIO> = object : IOConcurrent {
   override fun dispatchers(): Dispatchers<ForIO> = dispatchers
 }
 
-fun IO.Companion.timer(CF: Concurrent<ForIO>): Timer<ForIO> =
+fun BIO.Companion.timer(CF: Concurrent<ForIO>): Timer<ForIO> =
   Timer(CF)
 
 @extension
@@ -219,7 +223,7 @@ interface IOConcurrentEffect : ConcurrentEffect<ForIO>, IOEffect, IOConcurrent {
     fix().runAsyncCancellable(OnCancel.ThrowCancellationException, cb)
 }
 
-fun IO.Companion.concurrentEffect(dispatchers: Dispatchers<ForIO>): ConcurrentEffect<ForIO> = object : IOConcurrentEffect {
+fun BIO.Companion.concurrentEffect(dispatchers: Dispatchers<ForIO>): ConcurrentEffect<ForIO> = object : IOConcurrentEffect {
   override fun dispatchers(): Dispatchers<ForIO> = dispatchers
 }
 
@@ -229,7 +233,7 @@ interface IOSemigroup<A> : Semigroup<IO<A>> {
   fun SG(): Semigroup<A>
 
   override fun IO<A>.combine(b: IO<A>): IO<A> =
-    flatMap { a1: A -> b.map { a2: A -> SG().run { a1.combine(a2) } } }
+    FlatMap { a1: A -> b.map { a2: A -> SG().run { a1.combine(a2) } } }
 }
 
 @extension
@@ -273,8 +277,8 @@ interface IODispatchers : Dispatchers<ForIO> {
 
 @extension
 interface IOEnvironment : Environment<ForIO> {
-  override fun dispatchers(): Dispatchers<ForIO> =
-    IO.dispatchers()
+  override fun dispatchers(): Dispatchers<ForIO> =  TODO()
+    // BIO.dispatchers()
 
   override fun handleAsyncError(e: Throwable): IO<Unit> =
     IO { println("Found uncaught async exception!"); e.printStackTrace() }
@@ -284,16 +288,16 @@ interface IOEnvironment : Environment<ForIO> {
 interface IODefaultConcurrent : Concurrent<ForIO>, IOConcurrent {
 
   override fun dispatchers(): Dispatchers<ForIO> =
-    IO.dispatchers()
+    TODO()
 }
 
-fun IO.Companion.timer(): Timer<ForIO> = Timer(IO.concurrent())
+fun BIO.Companion.timer(): Timer<ForIO> = Timer(IO.concurrent(TODO()))
 
 @extension
 interface IODefaultConcurrentEffect : ConcurrentEffect<ForIO>, IOConcurrentEffect, IODefaultConcurrent
 
-fun <A> IO.Companion.fx(c: suspend ConcurrentSyntax<ForIO>.() -> A): IO<A> =
-  defer { IO.concurrent().fx.concurrent(c).fix() }
+fun <A> BIO.Companion.fx(c: suspend ConcurrentSyntax<ForIO>.() -> A): IO<A> =
+  defer { IO.concurrent(TODO()).fx.concurrent(c).fix() }
 
 /**
  * converts this Either to an IO. The resulting IO will evaluate to this Eithers

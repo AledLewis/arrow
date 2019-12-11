@@ -4,7 +4,7 @@ import arrow.core.Either
 import arrow.fx.IO.Pure
 
 /**
- * An [IOFrame] knows how to [recover] from a [Throwable] and how to map a value [A] to [R].
+ * An [IOFrame] knows how to [recover] from a [Throwable] and how to map a value [A] to [B].
  *
  * Internal to `IO`'s implementations, used to specify
  * error handlers in their respective `Bind` internal states.
@@ -14,40 +14,45 @@ import arrow.fx.IO.Pure
  *
  * It's used to implement [attempt], [handleErrorWith] and [arrow.fx.internal.IOBracket]
  */
-internal interface IOFrame<in A, out R> : (A) -> R {
-  override operator fun invoke(a: A): R
-
-  fun recover(e: Throwable): R
-
-  fun fold(value: Either<Throwable, A>): R =
-    when (value) {
-      is Either.Right -> invoke(value.b)
-      is Either.Left -> recover(value.a)
-    }
+internal interface IOFrame<in E, in A, out B> : (A) -> B {
+  override operator fun invoke(a: A): B
+  fun recover(e: Throwable): B
+  fun handleError(e: E): B
 
   companion object {
 
-    internal class Redeem<A, B>(val fe: (Throwable) -> B, val fb: (A) -> B) : IOFrame<A, IO<B>> {
-      override fun invoke(a: A): IO<B> = Pure(fb(a))
-      override fun recover(e: Throwable): IO<B> = Pure(fe(e))
+    internal class Redeem<E, A, B>(val ft: (Throwable) -> B, val fe: (E) -> B, val fb: (A) -> B) : IOFrame<E, A, BIO<Nothing, B>> {
+      override fun invoke(a: A): BIO<Nothing, B> = Pure(fb(a))
+      override fun recover(e: Throwable): BIO<Nothing, B> = Pure(ft(e))
+      override fun handleError(e: E): BIO<Nothing, B> = Pure(fe(e))
     }
 
-    internal class RedeemWith<A, B>(val fe: (Throwable) -> IOOf<B>, val fb: (A) -> IOOf<B>) : IOFrame<A, IO<B>> {
-      override fun invoke(a: A): IO<B> = fb(a).fix()
-      override fun recover(e: Throwable): IO<B> = fe(e).fix()
+    internal class RedeemWith<E, A, E2, B>(val ft: (Throwable) -> BIOOf<E2, B>, val fe: (E) -> BIOOf<E2, B>, val fb: (A) -> BIOOf<E2, B>) : IOFrame<E, A, BIO<E2, B>> {
+      override fun invoke(a: A): BIO<E2, B> = fb(a).fix()
+      override fun recover(e: Throwable): BIO<E2, B> = ft(e).fix()
+      override fun handleError(e: E): BIO<E2, B> = fe(e).fix()
     }
 
-    internal class ErrorHandler<A>(val fe: (Throwable) -> IOOf<A>) : IOFrame<A, IO<A>> {
-      override fun invoke(a: A): IO<A> = Pure(a)
-      override fun recover(e: Throwable): IO<A> = fe(e).fix()
+    internal class ErrorHandler<E, A, E2>(val ft: (Throwable) -> BIOOf<E2, A>, val fe: (E) -> BIOOf<E2, A>) : IOFrame<E, A, BIO<E2, A>> {
+      override fun invoke(a: A): BIO<E2, A> = Pure(a)
+      override fun recover(e: Throwable): BIO<E2, A> = ft(e).fix()
+      override fun handleError(e: E): BIO<E2, A> = fe(e).fix()
     }
 
     @Suppress("UNCHECKED_CAST")
-    fun <A> attempt(): (A) -> IO<Either<Throwable, A>> = AttemptIO as (A) -> IO<Either<Throwable, A>>
+    fun <E, A> attemptBIO(): (A) -> BIO<Throwable, Either<E, A>> = AttemptBIO as (A) -> BIO<Throwable, Either<E, A>>
+    fun <A> attemptIO(): (A) -> IO<Either<Throwable, A>> = AttemptIO as (A) -> IO<Either<Throwable, A>>
 
-    private object AttemptIO : IOFrame<Any?, IO<Either<Throwable, Any?>>> {
-      override operator fun invoke(a: Any?): IO<Either<Nothing, Any?>> = Pure(Either.Right(a))
-      override fun recover(e: Throwable): IO<Either<Throwable, Nothing>> = Pure(Either.Left(e))
+    private object AttemptBIO : IOFrame<Any?, Any?, BIO<Throwable, Either<Any?, Any?>>> {
+      override operator fun invoke(a: Any?): BIO<Throwable, Either<Any?, Any?>> = Pure(Either.Right(a))
+      override fun recover(e: Throwable): BIO<Throwable, Either<Any?, Any?>> = TODO()
+      override fun handleError(e: Any?): BIO<Throwable, Either<Any?, Any?>> = Pure(Either.Left(e))
+    }
+
+    private object AttemptIO : IOFrame<Any?, Any?, BIO<Nothing, Either<Throwable, Any?>>> {
+      override operator fun invoke(a: Any?): BIO<Nothing, Either<Throwable, Any?>> = Pure(Either.Right(a))
+      override fun recover(e: Throwable): BIO<Nothing, Either<Throwable, Any?>> = Pure(Either.Left(e))
+      override fun handleError(e: Any?): BIO<Nothing, Either<Throwable, Any?>> = TODO()
     }
   }
 }

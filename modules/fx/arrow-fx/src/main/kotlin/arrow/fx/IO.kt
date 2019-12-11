@@ -1,5 +1,6 @@
 package arrow.fx
 
+import arrow.Kind
 import arrow.core.Either
 import arrow.core.Either.Left
 import arrow.core.Eval
@@ -14,14 +15,10 @@ import arrow.fx.OnCancel.Companion.CancellationException
 import arrow.fx.OnCancel.Silent
 import arrow.fx.OnCancel.ThrowCancellationException
 import arrow.fx.internal.ForwardCancelable
-import arrow.fx.internal.IOBracket
-import arrow.fx.internal.IOFiber
-import arrow.fx.internal.IOForkedStart
 import arrow.fx.internal.Platform.maxStackDepthSize
 import arrow.fx.internal.Platform.onceOnly
 import arrow.fx.internal.Platform.unsafeResync
 import arrow.fx.internal.ShiftTick
-import arrow.fx.internal.UnsafePromise
 import arrow.fx.internal.scheduler
 import arrow.fx.typeclasses.CancelToken
 import arrow.fx.typeclasses.Disposable
@@ -35,20 +32,24 @@ import kotlin.coroutines.resume
 import kotlin.coroutines.resumeWithException
 import kotlin.coroutines.suspendCoroutine
 
-class ForIO private constructor() {
-  companion object
-}
-typealias IOOf<A> = arrow.Kind<ForIO, A>
-
-@Suppress("UNCHECKED_CAST", "NOTHING_TO_INLINE")
-inline fun <A> IOOf<A>.fix(): IO<A> =
-  this as IO<A>
-
 typealias IOProc<A> = ((Either<Throwable, A>) -> Unit) -> Unit
 typealias IOProcF<A> = ((Either<Throwable, A>) -> Unit) -> IOOf<Unit>
 
+typealias IO<A> = BIO<Nothing, A>
+
+class ForBIO private constructor() {
+  companion object
+}
+typealias BIOOf<E, A> = arrow.Kind2<ForBIO, E, A>
+typealias BIOPartialOf<E> = Kind<ForBIO, E>
+typealias IOOf<A> = BIOOf<Nothing, A>
+typealias ForIO = BIOPartialOf<Nothing>
+
+inline fun <E, A> BIOOf<E, A>.fix(): BIO<E, A> =
+  this as BIO<E, A>
+
 @Suppress("StringLiteralDuplication")
-sealed class IO<out A> : IOOf<A> {
+sealed class BIO<out E, out A> : BIOOf<E, A> {
 
   companion object : IOParMap2, IOParMap3, IORacePair, IORaceTriple {
 
@@ -69,7 +70,7 @@ sealed class IO<out A> : IOOf<A> {
      * }
      * ```
      */
-    fun <A> effect(f: suspend () -> A): IO<A> =
+    fun <A> effect(f: suspend () -> A): BIO<Nothing, A> =
       Effect(effect = f)
 
     /**
@@ -91,15 +92,15 @@ sealed class IO<out A> : IOOf<A> {
      * }
      * ```
      */
-    fun <A> effect(ctx: CoroutineContext, f: suspend () -> A): IO<A> =
+    fun <A> effect(ctx: CoroutineContext, f: suspend () -> A): BIO<Nothing, A> =
       Effect(ctx, f)
 
     /** @see effect */
-    operator fun <A> invoke(ctx: CoroutineContext, f: suspend () -> A): IO<A> =
+    operator fun <A> invoke(ctx: CoroutineContext, f: suspend () -> A): BIO<Nothing, A> =
       effect(ctx, f)
 
     /** @see effect */
-    operator fun <A> invoke(f: suspend () -> A): IO<A> =
+    operator fun <A> invoke(f: suspend () -> A): BIO<Nothing, A> =
       effect(EmptyCoroutineContext, f)
 
     /**
@@ -174,8 +175,8 @@ sealed class IO<out A> : IOOf<A> {
      * }
      * ```
      */
-    fun <A> later(f: () -> A): IO<A> =
-      defer { Pure(f()) }
+    fun <A> later(f: () -> A): BIO<Nothing, A> =
+      defer { Pure<Nothing, A>(f()) }
 
     /**
      * Defer a computation that results in an [IO] value.
@@ -191,7 +192,7 @@ sealed class IO<out A> : IOOf<A> {
      * }
      * ```
      */
-    fun <A> defer(f: () -> IOOf<A>): IO<A> =
+    fun <E, A> defer(f: () -> BIOOf<E, A>): BIO<E, A> =
       Suspend(f)
 
     /**
@@ -463,7 +464,7 @@ sealed class IO<out A> : IOOf<A> {
      * }
      * ```
      */
-    val unit: IO<Unit> =
+    val unit: BIO<Nothing, Unit> =
       just(Unit)
 
     /**
@@ -480,7 +481,7 @@ sealed class IO<out A> : IOOf<A> {
      * }
      * ```
      */
-    val lazy: IO<Unit> =
+    val lazy: BIO<Nothing, Unit> =
       invoke { }
 
     /**
@@ -499,7 +500,7 @@ sealed class IO<out A> : IOOf<A> {
      * }
      * ```
      */
-    fun <A> eval(eval: Eval<A>): IO<A> =
+    fun <A> eval(eval: Eval<A>): BIO<Nothing, A> =
       when (eval) {
         is Eval.Now -> just(eval.value)
         else -> invoke { eval.value() }
@@ -527,7 +528,7 @@ sealed class IO<out A> : IOOf<A> {
      * }
      * ```
      */
-    fun <A, B> tailRecM(a: A, f: (A) -> IOOf<Either<A, B>>): IO<B> =
+    fun <E, A, B> tailRecM(a: A, f: (A) -> BIOOf<E, Either<A, B>>): BIO<E, B> =
       f(a).fix().flatMap {
         when (it) {
           is Either.Left -> tailRecM(it.a, f)
@@ -550,7 +551,8 @@ sealed class IO<out A> : IOOf<A> {
      * }
      * ```
      */
-    val never: IO<Nothing> = async { }
+    val never: BIO<Nothing, Nothing> =
+      async { }
   }
 
   /**
@@ -596,29 +598,8 @@ sealed class IO<out A> : IOOf<A> {
    * }
    * ```
    */
-  open fun <B> map(f: (A) -> B): IO<B> =
+  open fun <B> map(f: (A) -> B): BIO<E, B> =
     Map(this, f, 0)
-
-  /**
-   * Transform the [IO] value of [A] by sequencing an effect [IO] that results in [B].
-   *
-   * @param f function that returns the [IO] effect resulting in [B] based on the input [A].
-   * @returns an effect that results in [B].
-   *
-   * ```kotlin:ank:playground
-   * import arrow.fx.IO
-   *
-   * fun main(args: Array<String>) {
-   *   val result =
-   *   //sampleStart
-   *   IO.just("Hello").flatMap { IO { "$it World" } }
-   *   //sampleEnd
-   *   println(result.unsafeRunSync())
-   * }
-   * ```
-   */
-  open fun <B> flatMap(f: (A) -> IOOf<B>): IO<B> =
-    Bind(this) { f(it).fix() }
 
   /**
    * Continue the evaluation on provided [CoroutineContext]
@@ -640,28 +621,8 @@ sealed class IO<out A> : IOOf<A> {
    * }
    * ```
    */
-  open fun continueOn(ctx: CoroutineContext): IO<A> =
+  open fun continueOn(ctx: CoroutineContext): BIO<E, A> =
     ContinueOn(this, ctx)
-
-  /**
-   * Given both the value and the function are within [IO], **ap**ply the function to the value.
-   *
-   * ```kotlin:ank:playground
-   * import arrow.fx.IO
-   *
-   * fun main() {
-   *   //sampleStart
-   *   val someF: IO<(Int) -> Long> = IO.just { i: Int -> i.toLong() + 1 }
-   *   val a = IO.just(3).ap(someF)
-   *   val b = IO.raiseError<Int>(RuntimeException("Boom")).ap(someF)
-   *   val c = IO.just(3).ap(IO.raiseError<(Int) -> Long>(RuntimeException("Boom")))
-   *   //sampleEnd
-   *   println("a: $a, b: $b, c: $c")
-   * }
-   * ```
-   */
-  fun <B> ap(ff: IOOf<(A) -> B>): IO<B> =
-    flatMap { a -> ff.fix().map { it(a) } }
 
   /**
    * Create a new [IO] that upon execution starts the receiver [IO] within a [Fiber] on [ctx].
@@ -688,90 +649,27 @@ sealed class IO<out A> : IOOf<A> {
    * @param ctx [CoroutineContext] to execute the source [IO] on.
    * @return [IO] with suspended execution of source [IO] on context [ctx].
    */
-  fun fork(ctx: CoroutineContext): IO<Fiber<ForIO, A>> = async { cb ->
-    val promise = UnsafePromise<A>()
-    // A new IOConnection, because its cancellation is now decoupled from our current one.
-    val conn = IOConnection()
-    IORunLoop.startCancelable(IOForkedStart(this, ctx), conn, promise::complete)
-    cb(Either.Right(IOFiber(promise, conn)))
-  }
+  fun fork(ctx: CoroutineContext): IO<Fiber<ForIO, A>> = TODO()
+  // async { cb ->
+  // val promise = UnsafePromise<A>()
+  // A new IOConnection, because its cancellation is now decoupled from our current one.
+  // val conn = IOConnection()
+  // IORunLoop.startCancelable(IOForkedStart(this, ctx), conn, promise::complete)
+  // cb(Either.Right(IOFiber(promise, conn)))
+  // }
 
-  /**
-   * Compose this [IO] with another [IO] [fb] while ignoring the output.
-   *
-   * ```kotlin:ank:playground
-   * import arrow.fx.IO
-   *
-   * fun main(args: Array<String>) {
-   *   //sampleStart
-   *   val result = IO.effect { println("Hello World!") }
-   *     .followedBy(IO.effect { println("Goodbye World!") })
-   *   //sampleEnd
-   *   println(result.unsafeRunSync())
-   * }
-   * ```
-   *
-   * @see flatMap if you need to act on the output of the original [IO].
-   */
-  fun <B> followedBy(fb: IOOf<B>) = flatMap { fb }
+  fun attempt(): BIO<Throwable, Either<E, A>> =
+    Bind(this, IOFrame.attemptBIO())
 
-  /**
-   * Safely attempts the [IO] and lift any errors to the value side into [Either].
-   *
-   * ```kotlin:ank:playground
-   * import arrow.fx.IO
-   *
-   * fun main(args: Array<String>) {
-   *   //sampleStart
-   *   val resultA = IO.raiseError<Int>(RuntimeException("Boom!")).attempt()
-   *   val resultB = IO.just("Hello").attempt()
-   *   //sampleEnd
-   *   println("resultA: ${resultA.unsafeRunSync()}, resultB: ${resultB.unsafeRunSync()}")
-   * }
-   * ```
-   *
-   * @see flatMap if you need to act on the output of the original [IO].
-   */
-  fun attempt(): IO<Either<Throwable, A>> =
-    Bind(this, IOFrame.attempt())
+  fun <B> redeem(ft: (Throwable) -> B,
+                 fe: (E) -> B,
+                 fb: (A) -> B): IO<B> =
+    Bind(this, IOFrame.Companion.Redeem(ft, fe, fb))
 
-  /**
-   * Redeem an [IO] to an [IO] of [B] by resolving the error **or** mapping the value [A] to [B].
-   *
-   * ```kotlin:ank:playground
-   * import arrow.fx.IO
-   *
-   * fun main(args: Array<String>) {
-   *   val result =
-   *   //sampleStart
-   *   IO.raiseError<Int>(RuntimeException("Hello from Error"))
-   *     .redeem({ e -> e.message ?: "" }, Int::toString)
-   *   //sampleEnd
-   *   println(result.unsafeRunSync())
-   * }
-   * ```
-   */
-  fun <B> redeem(fe: (Throwable) -> B, fb: (A) -> B): IO<B> =
-    Bind(this, IOFrame.Companion.Redeem(fe, fb))
-
-  /**
-   * Redeem an [IO] to an [IO] of [B] by resolving the error **or** mapping the value [A] to [B] **with** an effect.
-   *
-   * ```kotlin:ank:playground
-   * import arrow.fx.IO
-   *
-   * fun main(args: Array<String>) {
-   *   val result =
-   *   //sampleStart
-   *   IO.just("1")
-   *     .redeemWith({ e -> IO.just(-1) }, { str -> IO { str.toInt() } })
-   *   //sampleEnd
-   *   println(result.unsafeRunSync())
-   * }
-   * ```
-   */
-  fun <B> redeemWith(fe: (Throwable) -> IOOf<B>, fb: (A) -> IOOf<B>): IO<B> =
-    Bind(this, IOFrame.Companion.RedeemWith(fe, fb))
+  fun <E2, B> redeemWith(ft: (Throwable) -> BIOOf<E2, B>,
+                         fe: (E) -> BIOOf<E2, B>,
+                         fb: (A) -> BIOOf<E2, B>): BIO<E2, B> =
+    Bind(this, IOFrame.Companion.RedeemWith(ft, fe, fb))
 
   /**
    * [runAsync] allows you to run any [IO] in a referential transparent manner.
@@ -865,7 +763,7 @@ sealed class IO<out A> : IOOf<A> {
   internal abstract fun unsafeRunTimedTotal(limit: Duration): Option<A>
 
   /** Makes the source [IO] uncancelable such that a [Fiber.cancel] signal has no effect. */
-  fun uncancelable(): IO<A> =
+  fun uncancelable(): BIO<E, A> =
     ContextSwitch(this, ContextSwitch.makeUncancelable, ContextSwitch.disableUncancelable)
 
   /**
@@ -959,8 +857,8 @@ sealed class IO<out A> : IOOf<A> {
    * }
    *  ```
    */
-  fun <B> bracketCase(release: (A, ExitCase<Throwable>) -> IOOf<Unit>, use: (A) -> IOOf<B>): IO<B> =
-    IOBracket(this, release, use)
+  fun <B> bracketCase(release: (A, ExitCase<Throwable>) -> IOOf<Unit>, use: (A) -> IOOf<B>): IO<B> = TODO()
+  // IOBracket(this, release, use)
 
   /**
    * Executes the given [finalizer] when the source is finished, either in success or in error, or if canceled.
@@ -970,7 +868,8 @@ sealed class IO<out A> : IOOf<A> {
    * @see [guaranteeCase] for the version that can discriminate between termination conditions
    * @see [bracket] for the more general operation
    */
-  fun guarantee(finalizer: IOOf<Unit>): IO<A> = guaranteeCase { finalizer }
+  fun guarantee(finalizer: IOOf<Unit>): IO<A> = TODO()
+  // guaranteeCase { finalizer }
 
   /**
    * Executes the given `finalizer` when the source is finished, either in success or in error, or if canceled, allowing
@@ -983,34 +882,35 @@ sealed class IO<out A> : IOOf<A> {
    * @see [bracketCase] for the more general operation
    *
    */
-  fun guaranteeCase(finalizer: (ExitCase<Throwable>) -> IOOf<Unit>): IO<A> =
-    IOBracket.guaranteeCase(this, finalizer)
+  fun guaranteeCase(finalizer: (ExitCase<Throwable>) -> IOOf<Unit>): IO<A> = TODO()
+  // IOBracket.guaranteeCase(this, finalizer)
 
-  internal data class Pure<out A>(val a: A) : IO<A>() {
+  internal data class Pure<E, out A>(val a: A) : BIO<E, A>() {
     // Pure can be replaced by its value
-    override fun <B> map(f: (A) -> B): IO<B> = Suspend { Pure(f(a)) }
-
-    // Pure can be replaced by its value
-    override fun <B> flatMap(f: (A) -> IOOf<B>): IO<B> = Suspend { f(a).fix() }
+    override fun <B> map(f: (A) -> B): BIO<E, B> = Suspend { Pure<E, B>(f(a)) }
 
     override fun unsafeRunTimedTotal(limit: Duration): Option<A> = Some(a)
   }
 
-  internal data class RaiseError(val exception: Throwable) : IO<Nothing>() {
+  internal data class RaiseError<E>(val exception: Throwable) : BIO<E, Nothing>() {
     // Errors short-circuit
-    override fun <B> map(f: (Nothing) -> B): IO<B> = this
-
-    // Errors short-circuit
-    override fun <B> flatMap(f: (Nothing) -> IOOf<B>): IO<B> = this
+    override fun <B> map(f: (Nothing) -> B): BIO<E, B> = this
 
     override fun unsafeRunTimedTotal(limit: Duration): Option<Nothing> = throw exception
   }
 
-  internal data class Delay<out A>(val thunk: () -> A) : IO<A>() {
+  internal data class RaiseLeft<E>(val left: E) : BIO<E, Nothing>() {
+    // Errors short-circuit
+    override fun <B> map(f: (Nothing) -> B): BIO<E, B> = this
+
+    override fun unsafeRunTimedTotal(limit: Duration): Option<Nothing> = throw AssertionError("Unreachable")
+  }
+
+  internal data class Delay<out A>(val thunk: () -> A) : BIO<Nothing, A>() {
     override fun unsafeRunTimedTotal(limit: Duration): Option<A> = throw AssertionError("Unreachable")
   }
 
-  internal data class Suspend<out A>(val thunk: () -> IOOf<A>) : IO<A>() {
+  internal data class Suspend<E, out A>(val thunk: () -> BIOOf<E, A>) : BIO<E, A>() {
     override fun unsafeRunTimedTotal(limit: Duration): Option<A> = throw AssertionError("Unreachable")
   }
 
@@ -1022,43 +922,43 @@ sealed class IO<out A> : IOOf<A> {
     override fun unsafeRunTimedTotal(limit: Duration): Option<A> = unsafeResync(this, limit)
   }
 
-  internal data class Bind<E, out A>(val cont: IO<E>, val g: (E) -> IO<A>) : IO<A>() {
-    override fun unsafeRunTimedTotal(limit: Duration): Option<A> = throw AssertionError("Unreachable")
+  internal data class Bind<E, A, E2, out B>(val cont: BIO<E, A>, val g: (A) -> BIO<E2, B>) : BIO<E2, B>() {
+    override fun unsafeRunTimedTotal(limit: Duration): Option<B> = throw AssertionError("Unreachable")
   }
 
-  internal data class ContinueOn<A>(val cont: IO<A>, val cc: CoroutineContext) : IO<A>() {
+  internal data class ContinueOn<E, A>(val cont: BIO<E, A>, val cc: CoroutineContext) : BIO<E, A>() {
     // If a ContinueOn follows another ContinueOn, execute only the latest
-    override fun continueOn(ctx: CoroutineContext): IO<A> = ContinueOn(cont, ctx)
+    override fun continueOn(ctx: CoroutineContext): BIO<E, A> = ContinueOn(cont, ctx)
 
     override fun unsafeRunTimedTotal(limit: Duration): Option<A> = throw AssertionError("Unreachable")
   }
 
-  internal data class ContextSwitch<A>(
-    val source: IO<A>,
+  internal data class ContextSwitch<E, A>(
+    val source: BIO<E, A>,
     val modify: (IOConnection) -> IOConnection,
-    val restore: ((Any?, Throwable?, IOConnection, IOConnection) -> IOConnection)?
-  ) : IO<A>() {
+    val restore: ((a: Any?, e: Any?, t: Throwable?, old: IOConnection, new: IOConnection) -> IOConnection)?
+  ) : BIO<E, A>() {
     override fun unsafeRunTimedTotal(limit: Duration): Option<A> = throw AssertionError("Unreachable")
 
     companion object {
       // Internal reusable reference.
       internal val makeUncancelable: (IOConnection) -> IOConnection = { KindConnection.uncancelable }
 
-      internal val disableUncancelable: (Any?, Throwable?, IOConnection, IOConnection) -> IOConnection =
-        { _, _, old, _ -> old }
+      internal val disableUncancelable: (Any?, Any?, Throwable?, IOConnection, IOConnection) -> IOConnection =
+        { _, _, _, old, _ -> old }
     }
   }
 
-  internal data class Map<E, out A>(val source: IOOf<E>, val g: (E) -> A, val index: Int) : IO<A>(), (E) -> IO<A> {
-    override fun invoke(value: E): IO<A> = just(g(value))
+  internal data class Map<E, A, out B>(val source: BIOOf<E, A>, val g: (A) -> B, val index: Int) : BIO<E, B>(), (A) -> BIO<E, B> {
+    override fun invoke(value: A): BIO<E, B> = Pure(g(value))
 
-    override fun <B> map(f: (A) -> B): IO<B> =
+    override fun <C> map(f: (B) -> C): BIO<E, C> =
     // Allowed to do maxStackDepthSize map operations in sequence before
       // starting a new Map fusion in order to avoid stack overflows
       if (index != maxStackDepthSize) Map(source, g.andThen(f), index + 1)
       else Map(this, f, 0)
 
-    override fun unsafeRunTimedTotal(limit: Duration): Option<A> = throw AssertionError("Unreachable")
+    override fun unsafeRunTimedTotal(limit: Duration): Option<B> = throw AssertionError("Unreachable")
   }
 }
 
@@ -1080,8 +980,8 @@ sealed class IO<out A> : IOOf<A> {
  *
  * @see handleErrorWith for a version that can resolve the error using an effect
  */
-fun <A> IOOf<A>.handleError(f: (Throwable) -> A): IO<A> =
-  handleErrorWith { e -> IO.Pure(f(e)) }
+fun <E, A> BIOOf<E, A>.handleError(f: (Throwable) -> A, fe: (E) -> A): IO<A> =
+  handleErrorWith({ e -> BIO.Pure<Nothing, A>(f(e)) }, { e -> BIO.Pure(fe(e)) })
 
 /**
  * Handle the error by resolving the error with an effect that results in [A].
@@ -1105,5 +1005,71 @@ fun <A> IOOf<A>.handleError(f: (Throwable) -> A): IO<A> =
  *
  * @see handleErrorWith for a version that can resolve the error using an effect
  */
-fun <A> IOOf<A>.handleErrorWith(f: (Throwable) -> IOOf<A>): IO<A> =
-  IO.Bind(fix(), IOFrame.Companion.ErrorHandler(f))
+fun <E, A, E2> BIOOf<E, A>.handleErrorWith(f: (Throwable) -> BIOOf<E2, A>, fe: (E) -> BIOOf<E2, A>): BIO<E2, A> =
+  BIO.Bind(fix(), IOFrame.Companion.ErrorHandler(f, fe))
+
+/**
+ * Transform the [IO] value of [A] by sequencing an effect [IO] that results in [B].
+ *
+ * @param f function that returns the [IO] effect resulting in [B] based on the input [A].
+ * @returns an effect that results in [B].
+ *
+ * ```kotlin:ank:playground
+ * import arrow.fx.IO
+ *
+ * fun main(args: Array<String>) {
+ *   val result =
+ *   //sampleStart
+ *   IO.just("Hello").flatMap { IO { "$it World" } }
+ *   //sampleEnd
+ *   println(result.unsafeRunSync())
+ * }
+ * ```
+ */
+fun <E, A, E2 : E, B> BIOOf<E, A>.flatMap(f: (A) -> BIOOf<E2, B>): BIO<E2, B> =
+  when (val bio = fix()) {
+    is BIO.Pure -> BIO.Suspend { f(bio.a).fix() }
+    is BIO.RaiseError,
+    is BIO.RaiseLeft -> bio as BIO<E2, B>
+    else -> BIO.Bind(bio) { f(it).fix() }
+  }
+
+/**
+ * Compose this [IO] with another [IO] [fb] while ignoring the output.
+ *
+ * ```kotlin:ank:playground
+ * import arrow.fx.IO
+ *
+ * fun main(args: Array<String>) {
+ *   //sampleStart
+ *   val result = IO.effect { println("Hello World!") }
+ *     .followedBy(IO.effect { println("Goodbye World!") })
+ *   //sampleEnd
+ *   println(result.unsafeRunSync())
+ * }
+ * ```
+ *
+ * @see flatMap if you need to act on the output of the original [IO].
+ */
+fun <E, A, E2 : E, B> BIOOf<E, A>.followedBy(fb: BIOOf<E2, B>): BIO<E2, B> =
+  flatMap { fb }
+
+/**
+ * Given both the value and the function are within [IO], **ap**ply the function to the value.
+ *
+ * ```kotlin:ank:playground
+ * import arrow.fx.IO
+ *
+ * fun main() {
+ *   //sampleStart
+ *   val someF: IO<(Int) -> Long> = IO.just { i: Int -> i.toLong() + 1 }
+ *   val a = IO.just(3).ap(someF)
+ *   val b = IO.raiseError<Int>(RuntimeException("Boom")).ap(someF)
+ *   val c = IO.just(3).ap(IO.raiseError<(Int) -> Long>(RuntimeException("Boom")))
+ *   //sampleEnd
+ *   println("a: $a, b: $b, c: $c")
+ * }
+ * ```
+ */
+fun <E, A, B> BIOOf<E, A>.ap(ff: BIOOf<E, (A) -> B>): BIO<E, B> =
+  fix().flatMap { a -> ff.fix().map { it(a) } }

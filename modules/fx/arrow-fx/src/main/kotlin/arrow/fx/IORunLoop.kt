@@ -1,11 +1,9 @@
 package arrow.fx
 
-import arrow.core.Either
-import arrow.core.Left
 import arrow.core.NonFatal
-import arrow.core.Right
 import arrow.core.nonFatalOrThrow
 import arrow.fx.internal.ArrowInternalException
+import arrow.fx.internal.BIOResult
 import arrow.fx.internal.Platform
 import arrow.fx.internal.Platform.ArrayStack
 import kotlin.coroutines.CoroutineContext
@@ -15,19 +13,15 @@ import kotlin.coroutines.startCoroutine
 private typealias Current = BIOOf<Any?, Any?>
 private typealias BindF = (Any?) -> BIOOf<Any?, Any?>
 private typealias CallStack = ArrayStack<BindF>
-private typealias Callback = (Either<Throwable, Any?>) -> Unit
+private typealias Callback = (BIOResult<Any?, Any?>) -> Unit
 
 @Suppress("UNCHECKED_CAST", "ReturnCount", "ComplexMethod")
 internal object IORunLoop {
 
-  fun <E, A> start(source: BIOOf<E, A>, cb: (Either<Throwable, A>) -> Unit): Unit =
+  fun <E, A> start(source: BIOOf<E, A>, cb: (BIOResult<E, A>) -> Unit): Unit =
     loop(source, KindConnection.uncancelable, cb as Callback, null, null, null, EmptyCoroutineContext)
 
-  /**
-   * Evaluates the given `IO` reference, calling the given callback
-   * with the result when completed.
-   */
-  fun <E, A> startCancelable(source: BIOOf<E, A>, conn: IOConnection, cb: (Either<Throwable, A>) -> Unit): Unit =
+  fun <E, A> startCancelable(source: BIOOf<E, A>, conn: IOConnection, cb: (BIOResult<E, A>) -> Unit): Unit =
     loop(source, conn, cb as Callback, null, null, null, EmptyCoroutineContext)
 
   fun <E, A> step(source: BIO<E, A>): BIO<E, A> {
@@ -146,7 +140,7 @@ internal object IORunLoop {
   private fun <A> sanitizedCurrentIO(currentIO: Current?, unboxed: Any?): IO<A> =
     (currentIO ?: BIO.Pure(unboxed)) as IO<A>
 
-  private fun suspendAsync(currentIO: IO<Any?>, bFirst: BindF?, bRest: CallStack?): IO<Any?> =
+  private fun suspendAsync(currentIO: BIO<Any?, Any?>, bFirst: BindF?, bRest: CallStack?): BIO<Any?, Any?> =
     // Hitting an async boundary means we have to stop, however if we had previous `flatMap` operations then we need to resume the loop with the collected stack
     if (bFirst != null || (bRest != null && bRest.isNotEmpty())) {
       BIO.Async { conn, cb ->
@@ -159,7 +153,7 @@ internal object IORunLoop {
   private fun loop(
     source: Current,
     cancelable: IOConnection,
-    cb: (Either<Throwable, Any?>) -> Unit,
+    cb: Callback,
     rcbRef: RestartCallback?,
     bFirstRef: BindF?,
     bRestRef: CallStack?,
@@ -176,7 +170,7 @@ internal object IORunLoop {
 
     do {
       if (conn.isCanceled()) {
-        cb(Left(OnCancel.CancellationException))
+        cb(BIOResult.Error(OnCancel.CancellationException))
         return
       }
       when (currentIO) {
@@ -187,7 +181,7 @@ internal object IORunLoop {
         is BIO.RaiseError -> {
           when (val errorHandler: IOFrame<Any?, Any?, BIOOf<Any?, Any?>>? = findErrorHandlerInCallStack(bFirst, bRest)) {
             null -> {
-              cb(Left(currentIO.exception))
+              cb(BIOResult.Error(currentIO.exception))
               return
             }
             else -> {
@@ -200,8 +194,7 @@ internal object IORunLoop {
         is BIO.RaiseLeft -> {
           when (val errorHandler: IOFrame<Any?, Any?, BIOOf<Any?, Any?>>? = findErrorHandlerInCallStack(bFirst, bRest)) {
             null -> {
-              TODO("Fix IORunLoop to expose left")
-              // cb(Left(currentIO.left))
+              cb(BIOResult.Left(currentIO.left))
               return
             }
             else -> {
@@ -308,7 +301,7 @@ internal object IORunLoop {
 
         // Return case when no there are no more binds left
         if (nextBind == null) {
-          cb(Right(result))
+          cb(BIOResult.Right(result))
           return
         } else {
           currentIO = executeSafe { nextBind(result) }
@@ -396,7 +389,7 @@ internal object IORunLoop {
     private var trampolineAfter: Boolean = false
     private inline val shouldTrampoline inline get() = trampolineAfter || contIndex == Platform.maxStackDepthSize
 
-    private var value: IO<Any?>? = null
+    private var value: BIO<Any?, Any?>? = null
 
     fun contextSwitch(conn: IOConnection) {
       this.conn = conn
@@ -410,7 +403,7 @@ internal object IORunLoop {
       contIndex++
     }
 
-    fun start(async: BIO.Async<Any?>, ctx: CoroutineContext, bFirst: BindF?, bRest: CallStack?) {
+    fun start(async: BIO.Async<Any?, Any?>, ctx: CoroutineContext, bFirst: BindF?, bRest: CallStack?) {
       prepare(ctx, bFirst, bRest)
       trampolineAfter = async.shouldTrampoline
       async.k(conn, this)
@@ -421,7 +414,7 @@ internal object IORunLoop {
       effect.effect.startCoroutine(this)
     }
 
-    private fun signal(result: IO<Any?>) {
+    private fun signal(result: BIO<Any?, Any?>) {
       // Allow GC to collect
       val bFirst = this.bFirst
       val bRest = this.bRest
@@ -433,12 +426,13 @@ internal object IORunLoop {
       loop(result, conn, cb, this, bFirst, bRest, ctx)
     }
 
-    override operator fun invoke(either: Either<Throwable, Any?>) {
+    override operator fun invoke(either: BIOResult<Any?, Any?>) {
       if (canCall) {
         canCall = false
         when (either) {
-          is Either.Left -> BIO.RaiseError<Nothing>(either.a)
-          is Either.Right -> BIO.Pure<Nothing, Any?>(either.b)
+          is BIOResult.Error -> BIO.RaiseError<Nothing>(either.exception)
+          is BIOResult.Left -> BIO.RaiseLeft(either.e)
+          is BIOResult.Right -> BIO.Pure<Nothing, Any?>(either.a)
         }.let { r ->
           if (shouldTrampoline) {
             this.value = r

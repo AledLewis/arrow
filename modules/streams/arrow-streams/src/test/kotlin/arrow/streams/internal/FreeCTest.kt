@@ -15,7 +15,7 @@ import arrow.core.Try
 import arrow.fx.ForIO
 import arrow.fx.IO
 import arrow.fx.fix
-import arrow.fx.extensions.io.monadError.monadError
+import arrow.fx.extensions.bio.monadError.monadError
 import arrow.higherkind
 import arrow.core.extensions.`try`.monadError.monadError
 import arrow.core.extensions.either.monadError.monadError
@@ -23,6 +23,7 @@ import arrow.core.fix
 import arrow.core.identity
 import arrow.core.right
 import arrow.core.some
+import arrow.fx.value
 import arrow.streams.internal.freec.eq.eq
 import arrow.streams.internal.freec.monadDefer.monadDefer
 import arrow.test.UnitSpec
@@ -110,7 +111,7 @@ class FreeCTest : UnitSpec() {
 
     "Can interpret an ADT as Free operations" {
       program.foldMap(eitherInterpreter, Either.monadError()).fix() shouldBe Right(Some(-30))
-      program.foldMap(ioInterpreter, IO.monadError()).fix().unsafeRunSync() shouldBe Some(-30)
+      program.foldMap(ioInterpreter, IO.monadError()).fix().unsafeRunSync().value() shouldBe Some(-30)
     }
 
     "foldMap is stack safe" {
@@ -119,7 +120,7 @@ class FreeCTest : UnitSpec() {
       hugeProg
         .foldMap(ioInterpreter, IO.monadError())
         .fix()
-        .unsafeRunSync() shouldBe Some(n)
+        .unsafeRunSync().value() shouldBe Some(n)
 
       hugeProg.foldMap(eitherInterpreter, Either.monadError()).fix() shouldBe Right(Some(n))
     }

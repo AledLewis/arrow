@@ -1,7 +1,7 @@
 package arrow.integrations.retrofit.adapter
 
 import arrow.fx.IO
-import arrow.fx.extensions.io.async.async
+import arrow.fx.extensions.bio.async.async
 import arrow.fx.fix
 import arrow.integrations.retrofit.adapter.retrofit.ApiClientTest
 import arrow.integrations.retrofit.adapter.retrofit.retrofit

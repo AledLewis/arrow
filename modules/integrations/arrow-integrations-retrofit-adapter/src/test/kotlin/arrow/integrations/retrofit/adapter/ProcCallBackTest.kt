@@ -4,13 +4,14 @@ import arrow.core.Either
 import arrow.core.extensions.either.applicativeError.applicativeError
 import arrow.core.fix
 import arrow.fx.IO
-import arrow.fx.extensions.io.async.async
+import arrow.fx.extensions.bio.async.async
 import arrow.fx.fix
 import arrow.fx.rx2.ObservableK
 import arrow.fx.rx2.extensions.observablek.applicativeError.applicativeError
 import arrow.fx.rx2.extensions.observablek.monadDefer.monadDefer
 import arrow.fx.rx2.fix
 import arrow.fx.rx2.value
+import arrow.fx.value
 import arrow.integrations.retrofit.adapter.mock.ResponseMock
 import arrow.integrations.retrofit.adapter.retrofit.ApiClientTest
 import arrow.integrations.retrofit.adapter.retrofit.retrofit
@@ -37,6 +38,7 @@ class ProcCallBackTest : UnitSpec() {
         .async(IO.async())
         .fix()
         .unsafeRunSync()
+        .value()
         .unwrapBody(Either.applicativeError())
         .fix()
         .fold({ throwable ->

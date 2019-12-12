@@ -1,6 +1,8 @@
 package arrow.benchmarks
 
 import arrow.fx.IO
+import arrow.fx.flatMap
+import arrow.fx.value
 import org.openjdk.jmh.annotations.Benchmark
 import org.openjdk.jmh.annotations.CompilerControl
 import org.openjdk.jmh.annotations.Fork
@@ -32,5 +34,5 @@ open class HandleNonRaised {
 
   @Benchmark
   fun io(): Int =
-    ioHappyPathLoop(0).unsafeRunSync()
+    ioHappyPathLoop(0).unsafeRunSync().value()
 }

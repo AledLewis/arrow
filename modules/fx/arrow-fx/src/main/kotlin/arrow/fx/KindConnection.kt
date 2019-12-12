@@ -249,7 +249,7 @@ sealed class KindConnection<F> {
      *
      * ```kotlin:ank:playground
      * import arrow.fx.*
-     * import arrow.fx.extensions.io.monadDefer.monadDefer
+     * import arrow.fx.extensions.bio.monadDefer.monadDefer
      *
      * fun main(args: Array<String>) {
      *   //sampleStart
@@ -266,7 +266,7 @@ sealed class KindConnection<F> {
      *
      * ```kotlin:ank:playground
      * import arrow.fx.*
-     * import arrow.fx.extensions.io.applicative.applicative
+     * import arrow.fx.extensions.bio.applicative.applicative
      *
      * fun main(args: Array<String>) {
      *   //sampleStart

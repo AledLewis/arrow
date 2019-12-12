@@ -194,7 +194,7 @@ interface Ref<F, A> {
  *
  * ```kotlin:ank:playground
  * import arrow.fx.*
- * import arrow.fx.extensions.io.monadDefer.monadDefer
+ * import arrow.fx.extensions.bio.monadDefer.monadDefer
  *
  * fun main(args: Array<String>) {
  *   //sampleStart
@@ -212,7 +212,7 @@ interface RefFactory<F> {
    *
    * ```kotlin:ank:playground
    * import arrow.fx.*
-   * import arrow.fx.extensions.io.async.async
+   * import arrow.fx.extensions.bio.async.async
    *
    * fun main(args: Array<String>) {
    *   //sampleStart

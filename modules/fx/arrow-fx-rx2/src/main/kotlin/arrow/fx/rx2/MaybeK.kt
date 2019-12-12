@@ -12,6 +12,7 @@ import arrow.core.nonFatalOrThrow
 
 import arrow.fx.internal.Platform
 import arrow.fx.typeclasses.CancelToken
+import arrow.fx.typeclasses.Cause
 import arrow.fx.typeclasses.ExitCase
 import arrow.fx.typeclasses.ExitCase.Canceled
 import arrow.fx.typeclasses.ExitCase.Completed
@@ -110,7 +111,7 @@ data class MaybeK<out A>(val maybe: Maybe<out A>) : MaybeKOf<A> {
               MaybeK.defer { use(a) }
                 .value()
                 .doOnError { t: Throwable ->
-                  MaybeK.defer { release(a, Error(t.nonFatalOrThrow())) }.value().subscribe({ emitter.onError(t) }, { e -> emitter.onError(Platform.composeErrors(t, e)) })
+                  MaybeK.defer { release(a, Error(Cause.Exception(t.nonFatalOrThrow()))) }.value().subscribe({ emitter.onError(t) }, { e -> emitter.onError(Platform.composeErrors(t, e)) })
                 }.doAfterSuccess {
                   MaybeK.defer { release(a, Completed) }.fix().value().subscribe({ emitter.onComplete() }, emitter::onError)
                 }

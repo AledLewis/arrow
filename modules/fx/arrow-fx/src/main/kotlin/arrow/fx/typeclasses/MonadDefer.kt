@@ -40,7 +40,7 @@ interface MonadDefer<F> : MonadThrow<F>, Bracket<F, Throwable> {
    * import arrow.Kind
    * import arrow.core.Tuple2
    * import arrow.fx.*
-   * import arrow.fx.extensions.io.monadDefer.monadDefer
+   * import arrow.fx.extensions.bio.monadDefer.monadDefer
    * import arrow.fx.typeclasses.MonadDefer
    *
    * fun main(args: Array<String>) {

@@ -55,8 +55,8 @@ We could fix this snippet to support proper cancellation by using `bracket` inst
 which allows us to register an operation to run on cancellation, error or completion.
 
 ```kotlin:ank
-import arrow.fx.extensions.io.monad.flatMap
-import arrow.fx.extensions.io.monad.map
+import arrow.fx.extensions.bio.monad.flatMap
+import arrow.fx.extensions.bio.monad.map
 
 fun <A, B, C> parallelMap2(first: IO<A>,
                           second: IO<B>,

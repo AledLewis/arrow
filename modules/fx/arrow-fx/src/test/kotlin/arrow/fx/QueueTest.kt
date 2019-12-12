@@ -8,8 +8,8 @@ import arrow.core.Left
 import arrow.core.extensions.list.traverse.traverse
 import arrow.core.fix
 import arrow.fx.extensions.fx
-import arrow.fx.extensions.io.applicative.applicative
-import arrow.fx.extensions.io.concurrent.concurrent
+import arrow.fx.extensions.bio.applicative.applicative
+import arrow.fx.extensions.bio.concurrent.concurrent
 import arrow.fx.typeclasses.milliseconds
 import arrow.test.UnitSpec
 import arrow.test.generators.tuple2
@@ -37,7 +37,7 @@ class QueueTest : UnitSpec() {
             !l.traverse(IO.applicative(), q::offer)
             val nl = !(1..l.size).toList().traverse(IO.applicative()) { q.take() }
             nl.fix()
-          }.unsafeRunSync() == l
+          }.unsafeRunSync().value() == l
         }
       }
 
@@ -52,7 +52,7 @@ class QueueTest : UnitSpec() {
             val second = !q.take()
             val third = !q.take()
             Tuple3(first, second, third)
-          }.unsafeRunSync() == t
+          }.unsafeRunSync().value() == t
         }
       }
 
@@ -89,7 +89,7 @@ class QueueTest : UnitSpec() {
             val first = !q.take().fork(ctx)
             !q.offer(i)
             !first.join()
-          }.unsafeRunSync() == i
+          }.unsafeRunSync().value() == i
         }
       }
 
@@ -107,7 +107,7 @@ class QueueTest : UnitSpec() {
             val secondValue = !second.join()
             val thirdValue = !third.join()
             setOf(firstValue, secondValue, thirdValue)
-          }.unsafeRunSync() == setOf(t.a, t.b, t.c)
+          }.unsafeRunSync().value() == setOf(t.a, t.b, t.c)
         }
       }
 
@@ -120,7 +120,7 @@ class QueueTest : UnitSpec() {
             val first = !q.take()
             val second = !q.take()
             Tuple2(first, second)
-          }.unsafeRunSync() == t
+          }.unsafeRunSync().value() == t
         }
       }
 
@@ -135,7 +135,7 @@ class QueueTest : UnitSpec() {
             val second = !q.take()
             val third = !q.take()
             setOf(first, second, third)
-          }.unsafeRunSync() == setOf(t.a, t.b, t.c)
+          }.unsafeRunSync().value() == setOf(t.a, t.b, t.c)
         }
       }
 

@@ -98,7 +98,7 @@ Some(1).followedBy(Some(2))
 Executes two elements sequentially and ignores the result of the second. This is useful for effects like logging.
 
 ```kotlin:ank
-import arrow.fx.extensions.io.monad.*
+import arrow.fx.extensions.bio.monad.*
 
 fun logValue(i: Int): IO<Unit> = IO { /* println(i) */ }
 

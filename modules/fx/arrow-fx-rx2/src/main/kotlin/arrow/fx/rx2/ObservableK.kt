@@ -12,6 +12,7 @@ import arrow.core.nonFatalOrThrow
 
 import arrow.fx.internal.Platform
 import arrow.fx.typeclasses.CancelToken
+import arrow.fx.typeclasses.Cause
 import arrow.fx.typeclasses.Disposable
 import arrow.fx.typeclasses.ExitCase
 import arrow.typeclasses.Applicative
@@ -103,7 +104,7 @@ data class ObservableK<out A>(val observable: Observable<out A>) : ObservableKOf
               defer { use(a) }
                 .value()
                 .doOnError { t: Throwable ->
-                  defer { release(a, ExitCase.Error(t.nonFatalOrThrow())) }.value().subscribe({ emitter.tryOnError(t) }, { e -> emitter.tryOnError(Platform.composeErrors(t, e)) })
+                  defer { release(a, ExitCase.Error(Cause.Exception(t.nonFatalOrThrow()))) }.value().subscribe({ emitter.tryOnError(t) }, { e -> emitter.tryOnError(Platform.composeErrors(t, e)) })
                 }.doOnComplete {
                   defer { release(a, ExitCase.Completed) }.fix().value().subscribe({ emitter.onComplete() }, { e ->
                     emitter.tryOnError(e)

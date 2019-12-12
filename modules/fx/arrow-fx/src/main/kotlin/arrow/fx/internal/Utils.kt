@@ -1,13 +1,16 @@
 package arrow.fx.internal
 
 import arrow.core.Either
+import arrow.core.Left
 import arrow.core.None
 import arrow.core.Option
+import arrow.core.Right
 import arrow.core.Some
 import arrow.core.internal.AtomicBooleanW
 import arrow.core.left
 import arrow.core.right
 import arrow.fx.BIO
+import arrow.fx.BIOOf
 import arrow.fx.IO
 import arrow.fx.IOConnection
 import arrow.fx.IOOf
@@ -151,9 +154,9 @@ object Platform {
     }
   }
 
-  fun <A> unsafeResync(ioa: IO<A>, limit: Duration): Option<A> {
+  fun <E, A> unsafeResync(ioa: BIO<E, A>, limit: Duration): Option<Either<E, A>> {
     val latch = OneShotLatch()
-    var ref: Either<Throwable, A>? = null
+    var ref: BIOResult<E, A>? = null
     ioa.unsafeRunAsync { a ->
       ref = a
       latch.releaseShared(1)
@@ -167,8 +170,9 @@ object Platform {
 
     return when (val eitherRef = ref) {
       null -> None
-      is Either.Left -> throw eitherRef.a
-      is Either.Right -> Some(eitherRef.b)
+      is BIOResult.Right -> Some(Right(eitherRef.a))
+      is BIOResult.Left -> Some(Left(eitherRef.e))
+      is BIOResult.Error -> throw eitherRef.exception
     }
   }
 
@@ -300,4 +304,17 @@ internal fun <A> asyncContinuation(ctx: CoroutineContext, cc: (Either<Throwable,
  * @see [arrow.fx.IORunLoop.RestartCallback]
  */
 internal fun <A> IOForkedStart(fa: IOOf<A>, ctx: CoroutineContext): IO<A> =
+  BIO.Bind(BIO.ContinueOn(IO.unit, ctx)) { fa.fix() }
+
+/**
+ * Utility to makes sure that the original [fa] is gets forked on [ctx].
+ * @see IO.fork
+ * @see arrow.fx.racePair
+ * @see arrow.fx.raceTriple
+ *
+ * This moves the forking inside the [IO] operation,
+ * so it'll share it's [kotlin.coroutines.Continuation] with other potential jumps or [IO.async].
+ * @see [arrow.fx.IORunLoop.RestartCallback]
+ */
+internal fun <E, A> BIOForkedStart(fa: BIOOf<E, A>, ctx: CoroutineContext): BIO<E, A> =
   BIO.Bind(BIO.ContinueOn(IO.unit, ctx)) { fa.fix() }

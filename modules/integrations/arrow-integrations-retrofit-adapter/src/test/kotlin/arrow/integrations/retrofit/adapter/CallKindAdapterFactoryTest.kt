@@ -1,6 +1,6 @@
 package arrow.integrations.retrofit.adapter
 
-import arrow.fx.IO
+import arrow.fx.BIO
 import arrow.integrations.retrofit.adapter.retrofit.retrofit
 import arrow.test.UnitSpec
 import com.google.gson.reflect.TypeToken
@@ -26,9 +26,9 @@ class CallKindAdapterFactoryTest : UnitSpec() {
       exceptionList.message shouldBe "Return type must be parameterized as List<Foo> or List<out Foo>"
 
       val exceptionIO = shouldThrow<IllegalArgumentException> {
-        factory.get(IO::class.java, NO_ANNOTATIONS, retrofit)
+        factory.get(BIO::class.java, NO_ANNOTATIONS, retrofit)
       }
-      exceptionIO.message shouldBe "Return type must be parameterized as IO<Foo> or IO<out Foo>"
+      exceptionIO.message shouldBe "Return type must be parameterized as BIO<Foo> or BIO<out Foo>"
     }
 
     "Should work for CallK types" {

@@ -3,7 +3,9 @@ package arrow.benchmarks
 import arrow.core.extensions.list.foldable.foldLeft
 import arrow.fx.IO
 import arrow.fx.IODispatchers
-import arrow.fx.extensions.io.monad.map
+import arrow.fx.extensions.bio.monad.map
+import arrow.fx.flatMap
+import arrow.fx.value
 import org.openjdk.jmh.annotations.Benchmark
 import org.openjdk.jmh.annotations.CompilerControl
 import org.openjdk.jmh.annotations.Fork
@@ -35,5 +37,5 @@ open class RacePair {
   }
 
   @Benchmark
-  fun io(): Int = racePairHelper().unsafeRunSync()
+  fun io(): Int = racePairHelper().unsafeRunSync().value()
 }

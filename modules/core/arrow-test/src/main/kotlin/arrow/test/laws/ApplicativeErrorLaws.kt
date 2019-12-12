@@ -6,6 +6,7 @@ import arrow.core.Left
 import arrow.core.Right
 import arrow.core.identity
 import arrow.fx.IO
+import arrow.fx.value
 import arrow.test.generators.applicativeError
 import arrow.test.generators.either
 import arrow.test.generators.functionAToB
@@ -74,6 +75,6 @@ object ApplicativeErrorLaws {
     forAll(Gen.either(Gen.throwable(), Gen.int())) { either: Either<Throwable, Int> ->
       IO.effect {
         effectCatch { either.fold({ throw it }, ::identity) }
-      }.unsafeRunSync().equalUnderTheLaw(either.fold({ raiseError<Int>(it) }, { just(it) }), EQ)
+      }.unsafeRunSync().value().equalUnderTheLaw(either.fold({ raiseError<Int>(it) }, { just(it) }), EQ)
     }
 }

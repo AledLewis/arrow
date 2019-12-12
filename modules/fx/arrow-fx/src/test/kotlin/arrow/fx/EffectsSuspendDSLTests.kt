@@ -6,9 +6,9 @@ import arrow.core.Right
 import arrow.core.internal.AtomicIntW
 import arrow.core.identity
 import arrow.fx.extensions.fx
-import arrow.fx.extensions.io.concurrent.concurrent
-import arrow.fx.extensions.io.unsafeRun.runBlocking
-import arrow.fx.extensions.io.unsafeRun.unsafeRun
+import arrow.fx.extensions.bio.concurrent.concurrent
+import arrow.fx.extensions.bio.unsafeRun.runBlocking
+import arrow.fx.extensions.bio.unsafeRun.unsafeRun
 import arrow.fx.typeclasses.Concurrent
 import arrow.fx.typeclasses.UnsafeRun
 import arrow.test.UnitSpec

@@ -11,12 +11,12 @@ import arrow.core.extensions.listk.monad.monad
 import arrow.core.extensions.listk.semigroupK.semigroupK
 import arrow.fx.ForIO
 import arrow.fx.IO
-import arrow.fx.extensions.io.applicativeError.attempt
-import arrow.fx.extensions.io.async.async
-import arrow.fx.extensions.io.monad.monad
+import arrow.fx.extensions.bio.async.async
+import arrow.fx.extensions.bio.monad.monad
 import arrow.fx.mtl.statet.async.async
 import arrow.mtl.extensions.StateTMonadState
 import arrow.core.extensions.listk.monadCombine.monadCombine
+import arrow.fx.attemptIO
 import arrow.mtl.extensions.statet.applicative.applicative
 import arrow.mtl.extensions.statet.monadCombine.monadCombine
 import arrow.mtl.extensions.statet.monadState.monadState
@@ -45,11 +45,11 @@ class StateTTests : UnitSpec() {
   }
 
   private fun IOEQ(): Eq<StateTOf<ForIO, Int, Int>> = Eq { a, b ->
-    a.runM(IO.monad(), 1).attempt().unsafeRunSync() == b.runM(IO.monad(), 1).attempt().unsafeRunSync()
+    a.runM(IO.monad(), 1).attemptIO().unsafeRunSync() == b.runM(IO.monad(), 1).attemptIO().unsafeRunSync()
   }
 
   private fun IOEitherEQ(): Eq<StateTOf<ForIO, Int, Either<Throwable, Int>>> = Eq { a, b ->
-    a.runM(IO.monad(), 1).attempt().unsafeRunSync() == b.runM(IO.monad(), 1).attempt().unsafeRunSync()
+    a.runM(IO.monad(), 1).attemptIO().unsafeRunSync() == b.runM(IO.monad(), 1).attemptIO().unsafeRunSync()
   }
 
   init {

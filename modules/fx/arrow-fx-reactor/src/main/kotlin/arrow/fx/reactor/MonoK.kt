@@ -11,6 +11,7 @@ import arrow.fx.OnCancel
 import arrow.fx.internal.Platform
 import arrow.fx.reactor.CoroutineContextReactorScheduler.asScheduler
 import arrow.fx.typeclasses.CancelToken
+import arrow.fx.typeclasses.Cause
 import arrow.fx.typeclasses.Disposable
 import arrow.fx.typeclasses.ExitCase
 import reactor.core.publisher.Mono
@@ -104,14 +105,14 @@ data class MonoK<out A>(val mono: Mono<out A>) : MonoKOf<A> {
         else try {
           sink.onDispose(use(a).fix()
             .flatMap { b -> release(a, ExitCase.Completed).fix().map { b } }
-            .handleErrorWith { e -> release(a, ExitCase.Error(e)).fix().flatMap { MonoK.raiseError<B>(e) } }
+            .handleErrorWith { e -> release(a, ExitCase.Error(Cause.Exception(e))).fix().flatMap { MonoK.raiseError<B>(e) } }
             .mono
             .doOnCancel { release(a, ExitCase.Canceled).fix().mono.subscribe({}, sink::error) }
             .subscribe(sink::success, sink::error)
           )
         } catch (e: Throwable) {
           if (NonFatal(e)) {
-            release(a, ExitCase.Error(e)).fix().mono.subscribe({
+            release(a, ExitCase.Error(Cause.Exception(e))).fix().mono.subscribe({
               sink.error(e)
             }, { e2 ->
               sink.error(Platform.composeErrors(e, e2))

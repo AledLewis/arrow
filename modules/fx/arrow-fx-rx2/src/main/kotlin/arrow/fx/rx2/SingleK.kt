@@ -8,6 +8,7 @@ import arrow.core.nonFatalOrThrow
 
 import arrow.fx.internal.Platform
 import arrow.fx.typeclasses.CancelToken
+import arrow.fx.typeclasses.Cause
 import arrow.fx.typeclasses.Disposable
 import arrow.fx.typeclasses.ExitCase
 import arrow.fx.typeclasses.ExitCase.Canceled
@@ -107,7 +108,7 @@ data class SingleK<out A>(val single: Single<out A>) : SingleKOf<A> {
               SingleK.defer { use(a) }
                 .value()
                 .doOnError { t: Throwable ->
-                  SingleK.defer { release(a, Error(t.nonFatalOrThrow())) }.value().subscribe({ emitter.onError(t) }, { e -> emitter.onError(Platform.composeErrors(t, e)) })
+                  SingleK.defer { release(a, Error(Cause.Exception(t.nonFatalOrThrow()))) }.value().subscribe({ emitter.onError(t) }, { e -> emitter.onError(Platform.composeErrors(t, e)) })
                 }.doAfterSuccess {
                   SingleK.defer { release(a, Completed) }.fix().value().subscribe({ }, emitter::onError)
                 }.doOnDispose {

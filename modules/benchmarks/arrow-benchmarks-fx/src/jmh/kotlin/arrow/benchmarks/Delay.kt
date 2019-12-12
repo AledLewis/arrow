@@ -1,6 +1,8 @@
 package arrow.benchmarks
 
 import arrow.fx.IO
+import arrow.fx.flatMap
+import arrow.fx.value
 import org.openjdk.jmh.annotations.Benchmark
 import org.openjdk.jmh.annotations.CompilerControl
 import org.openjdk.jmh.annotations.Fork
@@ -28,7 +30,7 @@ open class Delay {
 
   @Benchmark
   fun io(): Int =
-    ioDelayLoop(0).unsafeRunSync()
+    ioDelayLoop(0).unsafeRunSync().value()
 
   @Benchmark
   fun catsIO(): Int =

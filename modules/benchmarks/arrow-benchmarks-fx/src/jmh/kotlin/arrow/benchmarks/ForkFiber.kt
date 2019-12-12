@@ -3,6 +3,9 @@ package arrow.benchmarks
 import arrow.fx.IO
 import arrow.fx.IODispatchers
 import arrow.fx.fix
+import arrow.fx.flatMap
+import arrow.fx.fork
+import arrow.fx.value
 import org.openjdk.jmh.annotations.Benchmark
 import org.openjdk.jmh.annotations.CompilerControl
 import org.openjdk.jmh.annotations.Fork
@@ -32,5 +35,5 @@ open class ForkFiber {
 
   @Benchmark
   fun io(): Int =
-    ioStartLoop(0).unsafeRunSync()
+    ioStartLoop(0).unsafeRunSync().value()
 }

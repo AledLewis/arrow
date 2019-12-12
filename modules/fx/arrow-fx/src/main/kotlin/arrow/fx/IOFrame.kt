@@ -45,7 +45,7 @@ internal interface IOFrame<in E, in A, out B> : (A) -> B {
 
     private object AttemptBIO : IOFrame<Any?, Any?, BIO<Throwable, Either<Any?, Any?>>> {
       override operator fun invoke(a: Any?): BIO<Throwable, Either<Any?, Any?>> = Pure(Either.Right(a))
-      override fun recover(e: Throwable): BIO<Throwable, Either<Any?, Any?>> = TODO()
+      override fun recover(e: Throwable): BIO<Throwable, Either<Any?, Any?>> = BIO.RaiseLeft(e)
       override fun handleError(e: Any?): BIO<Throwable, Either<Any?, Any?>> = Pure(Either.Left(e))
     }
 

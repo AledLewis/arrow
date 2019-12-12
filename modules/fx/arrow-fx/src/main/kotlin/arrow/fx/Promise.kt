@@ -27,8 +27,8 @@ interface Promise<F, A> {
    * ```kotlin:ank:playground
    * import arrow.fx.*
    * import arrow.fx.typeclasses.*
-   * import arrow.fx.extensions.io.async.async
-   * import arrow.fx.extensions.io.monad.flatMap
+   * import arrow.fx.extensions.bio.async.async
+   * import arrow.fx.extensions.bio.monad.flatMap
    *
    * fun main(args: Array<String>) {
    *   //sampleStart
@@ -57,8 +57,8 @@ interface Promise<F, A> {
    * import arrow.core.*
    * import arrow.fx.*
    * import arrow.fx.typeclasses.*
-   * import arrow.fx.extensions.io.async.async
-   * import arrow.fx.extensions.io.monad.flatMap
+   * import arrow.fx.extensions.bio.async.async
+   * import arrow.fx.extensions.bio.monad.flatMap
    *
    * fun main(args: Array<String>) {
    *   //sampleStart
@@ -85,8 +85,8 @@ interface Promise<F, A> {
    *
    * ```kotlin:ank:playground
    * import arrow.fx.*
-   * import arrow.fx.extensions.io.async.async
-   * import arrow.fx.extensions.io.monad.flatMap
+   * import arrow.fx.extensions.bio.async.async
+   * import arrow.fx.extensions.bio.monad.flatMap
    *
    * fun main(args: Array<String>) {
    *   //sampleStart
@@ -116,8 +116,8 @@ interface Promise<F, A> {
    *
    * ```kotlin:ank:playground
    * import arrow.fx.*
-   * import arrow.fx.extensions.io.async.async
-   * import arrow.fx.extensions.io.monad.flatMap
+   * import arrow.fx.extensions.bio.async.async
+   * import arrow.fx.extensions.bio.monad.flatMap
    *
    * fun main(args: Array<String>) {
    *   //sampleStart
@@ -144,8 +144,8 @@ interface Promise<F, A> {
    *
    * ```kotlin:ank:playground
    * import arrow.fx.*
-   * import arrow.fx.extensions.io.async.async
-   * import arrow.fx.extensions.io.monad.flatMap
+   * import arrow.fx.extensions.bio.async.async
+   * import arrow.fx.extensions.bio.monad.flatMap
    *
    * fun main(args: Array<String>) {
    *   //sampleStart
@@ -175,8 +175,8 @@ interface Promise<F, A> {
    * ```kotlin:ank:playground
    * import arrow.core.Right
    * import arrow.fx.*
-   * import arrow.fx.extensions.io.async.async
-   * import arrow.fx.extensions.io.monad.flatMap
+   * import arrow.fx.extensions.bio.async.async
+   * import arrow.fx.extensions.bio.monad.flatMap
    *
    * fun main(args: Array<String>) {
    *   //sampleStart
@@ -206,7 +206,7 @@ interface Promise<F, A> {
      *
      * ```kotlin:ank:playground
      * import arrow.fx.*
-     * import arrow.fx.extensions.io.concurrent.concurrent
+     * import arrow.fx.extensions.bio.concurrent.concurrent
      *
      * fun main(args: Array<String>) {
      *   //sampleStart
@@ -224,7 +224,7 @@ interface Promise<F, A> {
      *
      * ```kotlin:ank:playground
      * import arrow.fx.*
-     * import arrow.fx.extensions.io.concurrent.concurrent
+     * import arrow.fx.extensions.bio.concurrent.concurrent
      *
      * fun main(args: Array<String>) {
      *   //sampleStart
@@ -241,7 +241,7 @@ interface Promise<F, A> {
      *
      * ```kotlin:ank:playground
      * import arrow.fx.*
-     * import arrow.fx.extensions.io.async.async
+     * import arrow.fx.extensions.bio.async.async
      *
      * fun main(args: Array<String>) {
      *   //sampleStart
@@ -260,7 +260,7 @@ interface Promise<F, A> {
      *
      * ```kotlin:ank:playground
      * import arrow.fx.*
-     * import arrow.fx.extensions.io.async.async
+     * import arrow.fx.extensions.bio.async.async
      *
      * fun main(args: Array<String>) {
      *   //sampleStart

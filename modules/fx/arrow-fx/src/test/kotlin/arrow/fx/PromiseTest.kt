@@ -4,13 +4,11 @@ import arrow.core.Left
 import arrow.core.None
 import arrow.core.Some
 import arrow.core.Tuple2
-import arrow.fx.extensions.io.applicativeError.attempt
-import arrow.fx.extensions.io.apply.product
-import arrow.fx.extensions.io.async.async
-import arrow.fx.extensions.io.concurrent.concurrent
-import arrow.fx.extensions.io.functor.tupleLeft
-import arrow.fx.extensions.io.monad.flatMap
-import arrow.fx.extensions.io.monadDefer.monadDefer
+import arrow.fx.extensions.bio.apply.product
+import arrow.fx.extensions.bio.async.async
+import arrow.fx.extensions.bio.concurrent.concurrent
+import arrow.fx.extensions.bio.functor.tupleLeft
+import arrow.fx.extensions.bio.monadDefer.monadDefer
 import arrow.test.UnitSpec
 import arrow.test.generators.throwable
 import io.kotlintest.properties.Gen
@@ -35,7 +33,7 @@ class PromiseTest : UnitSpec() {
             p.complete(a).flatMap {
               p.get()
             }
-          }.unsafeRunSync() == a
+          }.unsafeRunSync().value() == a
         }
       }
 
@@ -44,10 +42,10 @@ class PromiseTest : UnitSpec() {
           promise.flatMap { p ->
             p.complete(a).flatMap {
               p.complete(b)
-                .attempt()
+                .attemptIO()
                 .product(p.get())
             }
-          }.unsafeRunSync() == Tuple2(Left(Promise.AlreadyFulfilled), a)
+          }.unsafeRunSync().value() == Tuple2(Left(Promise.AlreadyFulfilled), a)
         }
       }
 
@@ -57,7 +55,7 @@ class PromiseTest : UnitSpec() {
             p.tryComplete(a).flatMap { didComplete ->
               p.get().tupleLeft(didComplete)
             }
-          }.unsafeRunSync() == Tuple2(true, a)
+          }.unsafeRunSync().value() == Tuple2(true, a)
         }
       }
 
@@ -69,7 +67,7 @@ class PromiseTest : UnitSpec() {
                 p.get().tupleLeft(didComplete)
               }
             }
-          }.unsafeRunSync() == Tuple2(false, a)
+          }.unsafeRunSync().value() == Tuple2(false, a)
         }
       }
 
@@ -77,9 +75,9 @@ class PromiseTest : UnitSpec() {
         forAll(Gen.throwable()) { error ->
           promise.flatMap { p ->
             p.error(error).flatMap {
-              p.get().attempt()
+              p.get().attemptIO()
             }
-          }.unsafeRunSync() == Left(error)
+          }.unsafeRunSync().value() == Left(error)
         }
       }
 
@@ -87,10 +85,10 @@ class PromiseTest : UnitSpec() {
         forAll(Gen.throwable()) { error ->
           promise.flatMap { p ->
             p.error(error).flatMap {
-              p.error(RuntimeException("Boom!")).attempt()
-                .product(p.get().attempt())
+              p.error(RuntimeException("Boom!")).attemptIO()
+                .product(p.get().attemptIO())
             }
-          }.unsafeRunSync() == Tuple2(Left(Promise.AlreadyFulfilled), Left(error))
+          }.unsafeRunSync().value() == Tuple2(Left(Promise.AlreadyFulfilled), Left(error))
         }
       }
 
@@ -98,10 +96,10 @@ class PromiseTest : UnitSpec() {
         forAll(Gen.throwable()) { error ->
           promise.flatMap { p ->
             p.tryError(error).flatMap { didError ->
-              p.get().attempt()
+              p.get().attemptIO()
                 .tupleLeft(didError)
             }
-          }.unsafeRunSync() == Tuple2(true, Left(error))
+          }.unsafeRunSync().value() == Tuple2(true, Left(error))
         }
       }
 
@@ -110,11 +108,11 @@ class PromiseTest : UnitSpec() {
           promise.flatMap { p ->
             p.tryError(error).flatMap {
               p.tryError(RuntimeException("Boom!")).flatMap { didComplete ->
-                p.get().attempt()
+                p.get().attemptIO()
                   .tupleLeft(didComplete)
               }
             }
-          }.unsafeRunSync() == Tuple2(false, Left(error))
+          }.unsafeRunSync().value() == Tuple2(false, Left(error))
         }
       }
 
@@ -131,11 +129,11 @@ class PromiseTest : UnitSpec() {
               }
             }
           }
-        }.unsafeRunSync() shouldBe 2
+        }.unsafeRunSync().value() shouldBe 2
       }
 
       "$label - tryGet returns None for empty Promise" {
-        promise.flatMap { p -> p.tryGet() }.unsafeRunSync() shouldBe None
+        promise.flatMap { p -> p.tryGet() }.unsafeRunSync().value() shouldBe None
       }
 
       "$label - tryGet returns Some for completed promise" {
@@ -144,7 +142,7 @@ class PromiseTest : UnitSpec() {
             p.complete(a).flatMap {
               p.tryGet()
             }
-          }.unsafeRunSync() == Some(a)
+          }.unsafeRunSync().value() == Some(a)
         }
       }
     }

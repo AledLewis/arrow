@@ -2,6 +2,8 @@ package arrow.benchmarks
 
 import arrow.fx.IO
 import arrow.fx.IODispatchers
+import arrow.fx.followedBy
+import arrow.fx.value
 import org.openjdk.jmh.annotations.Benchmark
 import org.openjdk.jmh.annotations.CompilerControl
 import org.openjdk.jmh.annotations.Fork
@@ -29,7 +31,7 @@ open class Async {
 
   @Benchmark
   fun io(): Int =
-    ioAsyncLoop(0).unsafeRunSync()
+    ioAsyncLoop(0).unsafeRunSync().value()
 
   @Benchmark
   fun catsIO(): Int =

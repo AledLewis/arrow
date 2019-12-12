@@ -2,8 +2,10 @@ package arrow.benchmarks
 
 import arrow.core.Right
 import arrow.fx.IO
-import arrow.fx.extensions.io.concurrent.concurrent
+import arrow.fx.extensions.bio.concurrent.concurrent
 import arrow.fx.fix
+import arrow.fx.flatMap
+import arrow.fx.value
 import org.openjdk.jmh.annotations.Benchmark
 import org.openjdk.jmh.annotations.CompilerControl
 import org.openjdk.jmh.annotations.Fork
@@ -36,5 +38,5 @@ open class Cancellable {
 
   @Benchmark
   fun io(): Int =
-    cancelableLoop(0).unsafeRunSync()
+    cancelableLoop(0).unsafeRunSync().value()
 }

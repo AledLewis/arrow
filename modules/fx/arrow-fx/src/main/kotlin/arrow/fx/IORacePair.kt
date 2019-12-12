@@ -1,11 +1,11 @@
 package arrow.fx
 
-import arrow.core.Either
 import arrow.core.Left
 import arrow.core.Right
 import arrow.core.internal.AtomicBooleanW
-import arrow.fx.internal.IOFiber
-import arrow.fx.internal.IOForkedStart
+import arrow.fx.internal.BIOFiber
+import arrow.fx.internal.BIOForkedStart
+import arrow.fx.internal.BIOResult
 import arrow.fx.internal.Platform
 import arrow.fx.internal.UnsafePromise
 import arrow.fx.typeclasses.Fiber
@@ -47,7 +47,7 @@ interface IORacePair {
    *
    * @see [arrow.fx.typeclasses.Concurrent.raceN] for a simpler version that cancels loser.
    */
-  fun <A, B> racePair(ctx: CoroutineContext, ioA: IOOf<A>, ioB: IOOf<B>): IO<RacePair<ForIO, A, B>> =
+  fun <E, A, B> racePair(ctx: CoroutineContext, ioA: BIOOf<E, A>, ioB: BIOOf<E, B>): BIO<E, RacePair<BIOPartialOf<E>, A, B>> =
     BIO.Async { conn, cb ->
       val active = AtomicBooleanW(true)
 
@@ -56,51 +56,71 @@ interface IORacePair {
       // Cancelable connection for the left value
       val connA = IOConnection()
       connA.push(upstreamCancelToken)
-      val promiseA = UnsafePromise<A>()
+      val promiseA = UnsafePromise<E, A>()
 
       // Cancelable connection for the right value
       val connB = IOConnection()
       connB.push(upstreamCancelToken)
-      val promiseB = UnsafePromise<B>()
+      val promiseB = UnsafePromise<E, B>()
 
       conn.pushPair(connA, connB)
 
-      IORunLoop.startCancelable(IOForkedStart(ioA, ctx), connA) { either: Either<Throwable, A> ->
+      IORunLoop.startCancelable(BIOForkedStart(ioA, ctx), connA) { either: BIOResult<E, A> ->
         either.fold({ error ->
           if (active.getAndSet(false)) { // if an error finishes first, stop the race.
             connB.cancel().fix().unsafeRunAsync { r2 ->
               conn.pop()
-              cb(Left(r2.fold({ Platform.composeErrors(error, it) }, { error })))
+              cb(BIOResult.Error(r2.fold({ Platform.composeErrors(error, it) }, { error }, { error })))
             }
           } else {
-            promiseA.complete(Left(error))
+            promiseA.complete(BIOResult.Error(error))
+          }
+        }, { e ->
+          if (active.getAndSet(false)) { // if an error finishes first, stop the race.
+            connB.cancel().fix().unsafeRunAsync { r2 ->
+              conn.pop()
+              // TODO asyncErrorHandler r2
+              cb(BIOResult.Left(e))
+            }
+          } else {
+            promiseA.complete(BIOResult.Left(e))
           }
         }, { a ->
           if (active.getAndSet(false)) {
             conn.pop()
-            cb(Right(RacePair.First(a, IOFiber(promiseB, connB))))
+            cb(BIOResult.Right(RacePair.First(a, BIOFiber(promiseB, connB))))
           } else {
-            promiseA.complete(Right(a))
+            promiseA.complete(BIOResult.Right(a))
           }
         })
       }
 
-      IORunLoop.startCancelable(IOForkedStart(ioB, ctx), connB) { either: Either<Throwable, B> ->
+      IORunLoop.startCancelable(BIOForkedStart(ioB, ctx), connB) { either: BIOResult<E, B> ->
         either.fold({ error ->
           if (active.getAndSet(false)) { // if an error finishes first, stop the race.
             connA.cancel().fix().unsafeRunAsync { r2 ->
               conn.pop()
-              cb(Left(r2.fold({ Platform.composeErrors(error, it) }, { error })))
+              cb(BIOResult.Error(r2.fold({ Platform.composeErrors(error, it) }, { error }, { error })))
             }
           } else {
-            promiseB.complete(Left(error))
+            promiseB.complete(BIOResult.Error(error))
+          }
+        }, { e ->
+          if (active.getAndSet(false)) { // if an error finishes first, stop the race.
+            connB.cancel().fix().unsafeRunAsync { r2 ->
+              conn.pop()
+              // TODO asyncErrorHandler r2
+              cb(BIOResult.Left(e))
+            }
+          } else {
+            promiseB.complete(BIOResult.Left(e))
           }
         }, { b ->
           if (active.getAndSet(false)) {
             conn.pop()
-            cb(Right(RacePair.Second(IOFiber(promiseA, connA), b)))
+            cb(BIOResult.Right(RacePair.Second(BIOFiber(promiseA, connA), b)))
           } else {
-            promiseB.complete(Right(b))
+            promiseB.complete(BIOResult.Right(b))
           }
         })
       }

@@ -1,11 +1,9 @@
 package arrow.fx
 
-import arrow.core.Either
-import arrow.core.Left
-import arrow.core.Right
 import arrow.core.internal.AtomicBooleanW
-import arrow.fx.internal.IOFiber
-import arrow.fx.internal.IOForkedStart
+import arrow.fx.internal.BIOFiber
+import arrow.fx.internal.BIOForkedStart
+import arrow.fx.internal.BIOResult
 import arrow.fx.internal.Platform
 import arrow.fx.internal.UnsafePromise
 import arrow.fx.typeclasses.Fiber
@@ -48,7 +46,7 @@ interface IORaceTriple {
    *
    * @see [arrow.fx.typeclasses.Concurrent.raceN] for a simpler version that cancels losers.
    */
-  fun <A, B, C> raceTriple(ctx: CoroutineContext, ioA: IOOf<A>, ioB: IOOf<B>, ioC: IOOf<C>): IO<RaceTriple<ForIO, A, B, C>> =
+  fun <E, A, B, C> raceTriple(ctx: CoroutineContext, ioA: BIOOf<E, A>, ioB: BIOOf<E, B>, ioC: BIOOf<E, C>): BIO<E, RaceTriple<BIOPartialOf<E>, A, B, C>> =
     BIO.Async { conn, cb ->
       val active = AtomicBooleanW(true)
 
@@ -56,95 +54,129 @@ interface IORaceTriple {
 
       val connA = IOConnection()
       connA.push(upstreamCancelToken)
-      val promiseA = UnsafePromise<A>()
+      val promiseA = UnsafePromise<E, A>()
 
       val connB = IOConnection()
       connB.push(upstreamCancelToken)
-      val promiseB = UnsafePromise<B>()
+      val promiseB = UnsafePromise<E, B>()
 
       val connC = IOConnection()
       connC.push(upstreamCancelToken)
-      val promiseC = UnsafePromise<C>()
+      val promiseC = UnsafePromise<E, C>()
 
       conn.push(connA.cancel(), connB.cancel(), connC.cancel())
 
-      IORunLoop.startCancelable(IOForkedStart(ioA, ctx), connA) { either: Either<Throwable, A> ->
+      IORunLoop.startCancelable(BIOForkedStart(ioA, ctx), connA) { either: BIOResult<E, A> ->
         either.fold({ error ->
           if (active.getAndSet(false)) { // if an error finishes first, stop the race.
             connB.cancel().fix().unsafeRunAsync { r2 ->
               connC.cancel().fix().unsafeRunAsync { r3 ->
                 conn.pop()
                 val errorResult = r2.fold({ e2 ->
-                  r3.fold({ e3 -> Platform.composeErrors(error, e2, e3) }, { Platform.composeErrors(error, e2) })
+                  r3.fold({ e3 -> Platform.composeErrors(error, e2, e3) }, { Platform.composeErrors(error, e2) }, { error })
                 }, {
-                  r3.fold({ e3 -> Platform.composeErrors(error, e3) }, { error })
-                })
-                cb(Left(errorResult))
+                  r3.fold({ e3 -> Platform.composeErrors(error, e3) }, { error }, { error })
+                }, { error })
+                cb(BIOResult.Error(errorResult))
               }
             }
           } else {
-            promiseA.complete(Left(error))
+            promiseA.complete(BIOResult.Error(error))
+          }
+        }, { e ->
+          if (active.getAndSet(false)) { // if an error finishes first, stop the race.
+            connB.cancel().fix().unsafeRunAsync { r2 ->
+              connC.cancel().fix().unsafeRunAsync { r3 ->
+                conn.pop()
+                cb(BIOResult.Left(e))
+              }
+            }
+          } else {
+            promiseA.complete(BIOResult.Left(e))
           }
         }, { a ->
           if (active.getAndSet(false)) {
             conn.pop()
-            cb(Right(RaceTriple.First(a, IOFiber(promiseB, connB), IOFiber(promiseC, connC))))
+            cb(BIOResult.Right(RaceTriple.First(a, BIOFiber(promiseB, connB), BIOFiber(promiseC, connC))))
           } else {
-            promiseA.complete(Right(a))
+            promiseA.complete(BIOResult.Right(a))
           }
         })
       }
 
-      IORunLoop.startCancelable(IOForkedStart(ioB, ctx), connB) { either: Either<Throwable, B> ->
+      IORunLoop.startCancelable(BIOForkedStart(ioB, ctx), connB) { either: BIOResult<E, B> ->
         either.fold({ error ->
           if (active.getAndSet(false)) { // if an error finishes first, stop the race.
             connA.cancel().fix().unsafeRunAsync { r2 ->
               connC.cancel().fix().unsafeRunAsync { r3 ->
                 conn.pop()
                 val errorResult = r2.fold({ e2 ->
-                  r3.fold({ e3 -> Platform.composeErrors(error, e2, e3) }, { Platform.composeErrors(error, e2) })
+                  r3.fold({ e3 -> Platform.composeErrors(error, e2, e3) }, { Platform.composeErrors(error, e2) }, { error })
                 }, {
-                  r3.fold({ e3 -> Platform.composeErrors(error, e3) }, { error })
-                })
-                cb(Left(errorResult))
+                  r3.fold({ e3 -> Platform.composeErrors(error, e3) }, { error }, { error })
+                }, { error })
+                cb(BIOResult.Error(errorResult))
               }
             }
           } else {
-            promiseB.complete(Left(error))
+            promiseB.complete(BIOResult.Error(error))
+          }
+        }, { e ->
+          if (active.getAndSet(false)) { // if an error finishes first, stop the race.
+            connA.cancel().fix().unsafeRunAsync { r2 ->
+              connC.cancel().fix().unsafeRunAsync { r3 ->
+                conn.pop()
+                cb(BIOResult.Left(e))
+              }
+            }
+          } else {
+            promiseB.complete(BIOResult.Left(e))
           }
         }, { b ->
           if (active.getAndSet(false)) {
             conn.pop()
-            cb(Right(RaceTriple.Second(IOFiber(promiseA, connA), b, IOFiber(promiseC, connC))))
+            cb(BIOResult.Right(RaceTriple.Second(BIOFiber(promiseA, connA), b, BIOFiber(promiseC, connC))))
           } else {
-            promiseB.complete(Right(b))
+            promiseB.complete(BIOResult.Right(b))
           }
         })
       }
 
-      IORunLoop.startCancelable(IOForkedStart(ioC, ctx), connC) { either: Either<Throwable, C> ->
+      IORunLoop.startCancelable(BIOForkedStart(ioC, ctx), connC) { either: BIOResult<E, C> ->
         either.fold({ error ->
           if (active.getAndSet(false)) { // if an error finishes first, stop the race.
             connA.cancel().fix().unsafeRunAsync { r2 ->
               connB.cancel().fix().unsafeRunAsync { r3 ->
                 conn.pop()
                 val errorResult = r2.fold({ e2 ->
-                  r3.fold({ e3 -> Platform.composeErrors(error, e2, e3) }, { Platform.composeErrors(error, e2) })
+                  r3.fold({ e3 -> Platform.composeErrors(error, e2, e3) }, { Platform.composeErrors(error, e2) }, { error })
                 }, {
-                  r3.fold({ e3 -> Platform.composeErrors(error, e3) }, { error })
-                })
-                cb(Left(errorResult))
+                  r3.fold({ e3 -> Platform.composeErrors(error, e3) }, { error }, { error })
+                }, { error })
+                cb(BIOResult.Error(errorResult))
               }
             }
           } else {
-            promiseC.complete(Left(error))
+            promiseC.complete(BIOResult.Error(error))
+          }
+        }, { e ->
+          if (active.getAndSet(false)) { // if an error finishes first, stop the race.
+            connA.cancel().fix().unsafeRunAsync { r2 ->
+              connB.cancel().fix().unsafeRunAsync { r3 ->
+                conn.pop()
+                //
+                cb(BIOResult.Left(e))
+              }
+            }
+          } else {
+            promiseC.complete(BIOResult.Left(e))
           }
         }, { c ->
           if (active.getAndSet(false)) {
             conn.pop()
-            cb(Right(RaceTriple.Third(IOFiber(promiseA, connA), IOFiber(promiseB, connB), c)))
+            cb(BIOResult.Right(RaceTriple.Third(BIOFiber(promiseA, connA), BIOFiber(promiseB, connB), c)))
           } else {
-            promiseC.complete(Right(c))
+            promiseC.complete(BIOResult.Right(c))
           }
         })
       }

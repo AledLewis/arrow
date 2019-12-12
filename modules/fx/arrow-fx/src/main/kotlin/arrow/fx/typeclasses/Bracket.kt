@@ -3,8 +3,12 @@ package arrow.fx.typeclasses
 import arrow.Kind
 import arrow.core.Either
 import arrow.documented
-import arrow.fx.typeclasses.ExitCase.Error
 import arrow.typeclasses.MonadError
+
+sealed class Cause<out E> {
+  data class Error<E>(val error: E) : Cause<E>()
+  data class Exception(val exception: Throwable) : Cause<Nothing>()
+}
 
 sealed class ExitCase<out E> {
 
@@ -16,11 +20,18 @@ sealed class ExitCase<out E> {
     override fun toString() = "ExitCase.Canceled"
   }
 
-  data class Error<out E>(val e: E) : ExitCase<E>()
+  data class Error<out E>(val cause: Cause<E>) : ExitCase<E>()
+
+  companion object {
+    fun <E> error(e: E): ExitCase<E> =
+      Error(Cause.Error(e))
+    fun exception(error: Throwable): ExitCase<Nothing> =
+      Error(Cause.Exception(error))
+  }
 }
 
-fun <E> Either<E, *>.toExitCase() =
-  fold(::Error) { ExitCase.Completed }
+fun <E> Either<E, *>.toExitCase(): ExitCase<E> =
+  fold(ExitCase.Companion::error) { ExitCase.Completed }
 
 /**
  * ank_macro_hierarchy(arrow.fx.typeclasses.Bracket)

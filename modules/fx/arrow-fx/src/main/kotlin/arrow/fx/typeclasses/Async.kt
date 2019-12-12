@@ -259,7 +259,7 @@ interface Async<F> : MonadDefer<F> {
    *
    * ```kotlin:ank:playground
    * import arrow.fx.*
-   * import arrow.fx.extensions.io.async.async
+   * import arrow.fx.extensions.bio.async.async
    * import kotlinx.coroutines.Dispatchers
    *
    * fun main(args: Array<String>) {

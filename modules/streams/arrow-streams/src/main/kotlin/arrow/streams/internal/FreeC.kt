@@ -11,6 +11,7 @@ import arrow.core.Some
 import arrow.core.flatMap
 import arrow.core.orElse
 import arrow.core.some
+import arrow.fx.typeclasses.Cause
 import arrow.fx.typeclasses.ExitCase
 import arrow.streams.CompositeFailure
 import arrow.streams.internal.FreeC.Result
@@ -149,7 +150,7 @@ sealed class FreeC<F, out R> : FreeCOf<F, R> {
 
     fun asExitCase(): ExitCase<Throwable> = this.fold(
       pure = { ExitCase.Completed },
-      fail = { t -> ExitCase.Error(t) },
+      fail = { t -> ExitCase.Error(Cause.Exception(t)) },
       interrupted = { _, _ -> ExitCase.Canceled }
     )
 

@@ -1,6 +1,9 @@
 package arrow.benchmarks
 
 import arrow.fx.IO
+import arrow.fx.flatMap
+import arrow.fx.handleErrorWith
+import arrow.fx.value
 import org.openjdk.jmh.annotations.Benchmark
 import org.openjdk.jmh.annotations.CompilerControl
 import org.openjdk.jmh.annotations.Fork
@@ -10,7 +13,6 @@ import org.openjdk.jmh.annotations.Scope
 import org.openjdk.jmh.annotations.State
 import org.openjdk.jmh.annotations.Warmup
 import java.util.concurrent.TimeUnit
-import arrow.fx.extensions.io.applicativeError.handleErrorWith as ioHandleError
 
 @State(Scope.Thread)
 @Fork(2)
@@ -29,11 +31,11 @@ open class HandleRaisedError {
       IO.raiseError<Int>(dummy)
         .flatMap { x -> IO.just(x + 1) }
         .flatMap { x -> IO.just(x + 1) }
-        .ioHandleError { ioErrorRaisedloop(i + 1) }
+        .handleErrorWith { ioErrorRaisedloop(i + 1) }
     else
       IO.just(i)
 
   @Benchmark
   fun io(): Int =
-    ioErrorRaisedloop(0).unsafeRunSync()
+    ioErrorRaisedloop(0).unsafeRunSync().value()
 }

@@ -15,7 +15,7 @@ Performing effects while switching execution contexts a la carte is trivial.
 ```kotlin:ank:playground
 import arrow.fx.IO
 import arrow.unsafe
-import arrow.fx.extensions.io.unsafeRun.runBlocking
+import arrow.fx.extensions.bio.unsafeRun.runBlocking
 import arrow.fx.extensions.fx
 import kotlinx.coroutines.newSingleThreadContext
 
@@ -46,7 +46,7 @@ A [Fiber](/docs/effects/fiber) represents the pure result of a [Concurrent] data
 ```kotlin:ank:playground
 import arrow.fx.IO
 import arrow.unsafe
-import arrow.fx.extensions.io.unsafeRun.runBlocking
+import arrow.fx.extensions.bio.unsafeRun.runBlocking
 import arrow.fx.extensions.fx
 
 //sampleStart
@@ -87,7 +87,7 @@ Once the function specifies a valid return, we can observe how the returned non-
 ```kotlin:ank:playground
 import arrow.fx.IO
 import arrow.unsafe
-import arrow.fx.extensions.io.unsafeRun.runBlocking
+import arrow.fx.extensions.bio.unsafeRun.runBlocking
 import arrow.fx.extensions.fx
 
 //sampleStart
@@ -122,7 +122,7 @@ fun main() { // The edge of our world
 ```kotlin:ank:playground
 import arrow.fx.IO
 import arrow.unsafe
-import arrow.fx.extensions.io.unsafeRun.runBlocking
+import arrow.fx.extensions.bio.unsafeRun.runBlocking
 import arrow.fx.extensions.fx
 
 //sampleStart
@@ -149,7 +149,7 @@ fun main() { // The edge of our world
 ```kotlin:ank:playground
 import arrow.fx.IO
 import arrow.unsafe
-import arrow.fx.extensions.io.unsafeRun.runBlocking
+import arrow.fx.extensions.bio.unsafeRun.runBlocking
 import arrow.fx.extensions.fx
 
 //sampleStart
@@ -188,7 +188,7 @@ The value `program` below is pure and referentially transparent because `fx` ret
 ```kotlin:ank:playground
 import arrow.fx.IO
 import arrow.unsafe
-import arrow.fx.extensions.io.unsafeRun.runBlocking
+import arrow.fx.extensions.bio.unsafeRun.runBlocking
 import arrow.fx.extensions.fx
 //sampleStart
 suspend fun printThreadName(): Unit =

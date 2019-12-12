@@ -1,11 +1,12 @@
 package arrow.fx
 
 import arrow.Kind
+import arrow.core.Right
 import arrow.core.Some
 import arrow.core.extensions.monoid
 import arrow.core.extensions.list.traverse.traverse
-import arrow.fx.extensions.io.applicative.applicative
-import arrow.fx.extensions.io.bracket.bracket
+import arrow.fx.extensions.bio.applicative.applicative
+import arrow.fx.extensions.bio.bracket.bracket
 import arrow.fx.extensions.resource.applicative.applicative
 import arrow.fx.extensions.resource.monad.monad
 import arrow.fx.extensions.resource.monoid.monoid
@@ -24,7 +25,7 @@ class ResourceTest : UnitSpec() {
       val tested: IO<Int> = a.fix().invoke { IO.just(1) }.fix()
       val expected = b.fix().invoke { IO.just(1) }.fix()
       val compare = IO.applicative().map(tested, expected) { (t, e) -> t == e }.fix()
-      compare.unsafeRunTimed(5.seconds) == Some(true)
+      compare.unsafeRunTimed(5.seconds) == Some(Right(true))
     }
 
     testLaws(

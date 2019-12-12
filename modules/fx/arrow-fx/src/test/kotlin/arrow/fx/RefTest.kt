@@ -2,11 +2,10 @@ package arrow.fx
 
 import arrow.core.extensions.list.traverse.sequence
 import arrow.fx.extensions.fx
-import arrow.fx.extensions.io.applicative.applicative
-import arrow.fx.extensions.io.monad.flatMap
-import arrow.fx.extensions.io.monad.flatten
-import arrow.fx.extensions.io.monad.map
-import arrow.fx.extensions.io.monadDefer.monadDefer
+import arrow.fx.extensions.bio.applicative.applicative
+import arrow.fx.extensions.bio.monad.map
+import arrow.fx.extensions.bio.monad.flatten
+import arrow.fx.extensions.bio.monadDefer.monadDefer
 import arrow.test.UnitSpec
 import arrow.test.generators.functionAToB
 import arrow.test.laws.equalUnderTheLaw
@@ -27,7 +26,7 @@ class RefTest : UnitSpec() {
         .sequence(IO.applicative())
         .flatMap { r.get() }
         .fix()
-        .unsafeRunSync() shouldBe finalValue
+        .unsafeRunSync().value() shouldBe finalValue
     }
 
     "set get - successful" {

@@ -22,8 +22,8 @@ import arrow.core.fix
 import arrow.core.value
 import arrow.fx.ForIO
 import arrow.fx.IO
-import arrow.fx.extensions.io.applicativeError.attempt
-import arrow.fx.extensions.io.async.async
+import arrow.fx.attemptIO
+import arrow.fx.extensions.bio.async.async
 import arrow.fx.mtl.writert.async.async
 import arrow.mtl.extensions.writert.alternative.alternative
 import arrow.mtl.extensions.writert.applicative.applicative
@@ -47,11 +47,11 @@ import io.kotlintest.properties.Gen
 class WriterTTest : UnitSpec() {
 
   private fun IOEQ(): Eq<Kind<WriterTPartialOf<ForIO, Int>, Int>> = Eq { a, b ->
-    a.value().attempt().unsafeRunSync() == b.value().attempt().unsafeRunSync()
+    a.value().attemptIO().unsafeRunSync() == b.value().attemptIO().unsafeRunSync()
   }
 
   private fun IOEitherEQ(): Eq<Kind<WriterTPartialOf<ForIO, Int>, Either<Throwable, Int>>> = Eq { a, b ->
-    a.value().attempt().unsafeRunSync() == b.value().attempt().unsafeRunSync()
+    a.value().attemptIO().unsafeRunSync() == b.value().attemptIO().unsafeRunSync()
   }
 
   init {

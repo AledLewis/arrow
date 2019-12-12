@@ -1,6 +1,7 @@
 @file:Suppress("UnusedImports")
 package arrow.fx
 
+import arrow.fx.flatMap as FlatMap
 import arrow.core.Either
 import arrow.fx.typeclasses.Disposable
 import arrow.fx.typeclasses.ExitCase
@@ -31,7 +32,7 @@ private object MD : MonadDefer<ForIO> {
     arrow.fx.IO.just(a)
 
   override fun <A, B> IOOf<A>.flatMap(f: (A) -> IOOf<B>): IO<B> =
-    fix().flatMap(f)
+    FlatMap(f)
 
   override fun <A, B> tailRecM(a: A, f: (A) -> IOOf<Either<A, B>>): IO<B> =
     arrow.fx.IO.tailRecM(a, f)

@@ -7,9 +7,8 @@ import arrow.core.Tuple4
 import arrow.core.Tuple7
 import arrow.core.toT
 import arrow.fx.extensions.fx
-import arrow.fx.extensions.io.async.async
-import arrow.fx.extensions.io.concurrent.concurrent
-import arrow.fx.extensions.io.monad.flatMap
+import arrow.fx.extensions.bio.async.async
+import arrow.fx.extensions.bio.concurrent.concurrent
 import arrow.fx.typeclasses.seconds
 import arrow.test.UnitSpec
 import arrow.test.laws.equalUnderTheLaw

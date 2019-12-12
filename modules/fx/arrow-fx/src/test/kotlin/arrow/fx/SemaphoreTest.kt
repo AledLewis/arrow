@@ -3,14 +3,12 @@ package arrow.fx
 import arrow.core.extensions.eq
 import arrow.core.extensions.list.traverse.traverse
 import arrow.core.toT
-import arrow.fx.extensions.io.applicative.applicative
-import arrow.fx.extensions.io.applicativeError.handleError
-import arrow.fx.extensions.io.async.async
-import arrow.fx.extensions.io.concurrent.concurrent
-import arrow.fx.extensions.io.concurrent.parMapN
-import arrow.fx.extensions.io.functor.unit
-import arrow.fx.extensions.io.monad.flatMap
-import arrow.fx.extensions.io.monad.map
+import arrow.fx.extensions.bio.applicative.applicative
+import arrow.fx.extensions.bio.async.async
+import arrow.fx.extensions.bio.concurrent.concurrent
+import arrow.fx.extensions.bio.concurrent.parMapN
+import arrow.fx.extensions.bio.functor.unit
+import arrow.fx.extensions.bio.monad.map
 import arrow.test.UnitSpec
 import arrow.test.laws.equalUnderTheLaw
 import io.kotlintest.properties.Gen
@@ -99,7 +97,7 @@ class SemaphoreTest : UnitSpec() {
           semaphore(i)
             .map { false }
             .handleError { true }
-            .unsafeRunSync()
+            .unsafeRunSync().value()
         }
       }
 
@@ -115,7 +113,7 @@ class SemaphoreTest : UnitSpec() {
                 }
               }
             }
-          }.unsafeRunSync()
+          }.unsafeRunSync().value()
         }
       }
 

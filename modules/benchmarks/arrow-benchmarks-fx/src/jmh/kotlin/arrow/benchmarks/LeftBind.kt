@@ -1,6 +1,8 @@
 package arrow.benchmarks
 
 import arrow.fx.IO
+import arrow.fx.flatMap
+import arrow.fx.value
 import org.openjdk.jmh.annotations.Benchmark
 import org.openjdk.jmh.annotations.CompilerControl
 import org.openjdk.jmh.annotations.Fork
@@ -31,7 +33,7 @@ open class LeftBind {
 
   @Benchmark
   fun io(): Int =
-    IO.just(0).flatMap { ioLoop(it) }.unsafeRunSync()
+    IO.just(0).flatMap { ioLoop(it) }.unsafeRunSync().value()
 
   @Benchmark
   fun catsIO(): Int =

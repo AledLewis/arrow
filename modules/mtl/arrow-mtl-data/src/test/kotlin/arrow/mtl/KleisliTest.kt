@@ -20,8 +20,8 @@ import arrow.core.some
 import arrow.core.value
 import arrow.fx.ForIO
 import arrow.fx.IO
-import arrow.fx.extensions.io.applicativeError.attempt
-import arrow.fx.extensions.io.bracket.bracket
+import arrow.fx.attemptIO
+import arrow.fx.extensions.bio.bracket.bracket
 import arrow.fx.mtl.kleisli.bracket.bracket
 import arrow.mtl.extensions.kleisli.alternative.alternative
 import arrow.mtl.extensions.kleisli.contravariant.contravariant
@@ -49,11 +49,11 @@ class KleisliTest : UnitSpec() {
   }
 
   private fun IOEQ(): Eq<Kind<KleisliPartialOf<ForIO, Int>, Int>> = Eq { a, b ->
-    a.run(1).attempt().unsafeRunSync() == b.run(1).attempt().unsafeRunSync()
+    a.run(1).attemptIO().unsafeRunSync() == b.run(1).attemptIO().unsafeRunSync()
   }
 
   private fun IOEitherEQ(): Eq<Kind<KleisliPartialOf<ForIO, Int>, Either<Throwable, Int>>> = Eq { a, b ->
-    a.run(1).attempt().unsafeRunSync() == b.run(1).attempt().unsafeRunSync()
+    a.run(1).attemptIO().unsafeRunSync() == b.run(1).attemptIO().unsafeRunSync()
   }
 
   init {

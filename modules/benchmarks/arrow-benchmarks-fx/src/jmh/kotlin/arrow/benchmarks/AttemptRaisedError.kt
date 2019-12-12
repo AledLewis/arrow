@@ -1,6 +1,10 @@
 package arrow.benchmarks
 
+import arrow.fx.BIO
 import arrow.fx.IO
+import arrow.fx.attemptIO
+import arrow.fx.flatMap
+import arrow.fx.value
 import org.openjdk.jmh.annotations.Benchmark
 import org.openjdk.jmh.annotations.CompilerControl
 import org.openjdk.jmh.annotations.Fork
@@ -28,14 +32,14 @@ open class AttemptRaisedError {
 
   private fun ioLoopNotHappy(size: Int, i: Int): IO<Int> =
     if (i < size) {
-      IO { throw dummy }.attempt().flatMap {
-        it.fold({ ioLoopNotHappy(size, i + 1) }, IO.Companion::just)
+      IO { throw dummy }.attemptIO().flatMap {
+        it.fold({ ioLoopNotHappy(size, i + 1) }, BIO.Companion::just)
       }
     } else IO.just(1)
 
   @Benchmark
   fun io(): Int =
-    ioLoopNotHappy(size, 0).unsafeRunSync()
+    ioLoopNotHappy(size, 0).unsafeRunSync().value()
 
   @Benchmark
   fun cats(): Any =

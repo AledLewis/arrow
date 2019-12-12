@@ -5,7 +5,7 @@ package com.pacoworks.typeclasses.basics.solved.advanced
 import arrow.fx.ForIO
 import arrow.Kind
 import arrow.fx.IO
-import arrow.fx.extensions.io.async.async
+import arrow.fx.extensions.bio.async.async
 import arrow.fx.fix
 import arrow.fx.typeclasses.Async
 import arrow.typeclasses.DaoDatabase

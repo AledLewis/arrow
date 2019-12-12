@@ -2,8 +2,8 @@ package arrow.fx
 
 import arrow.core.extensions.monoid
 import arrow.fx.extensions.applicative
-import arrow.fx.extensions.io.applicative.unit
-import arrow.fx.extensions.io.concurrent.concurrent
+import arrow.fx.extensions.bio.applicative.unit
+import arrow.fx.extensions.bio.concurrent.concurrent
 import arrow.fx.extensions.monoid
 import arrow.fx.typeclasses.Fiber
 import arrow.fx.typeclasses.FiberOf

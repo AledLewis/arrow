@@ -19,7 +19,7 @@ Since the allocation of mutable state is not referentially transparent this side
 
 ```kotlin:ank:playground
 import arrow.fx.*
-import arrow.fx.extensions.io.async.async
+import arrow.fx.extensions.bio.async.async
 
 fun main(args: Array<String>) {
 //sampleStart
@@ -34,7 +34,7 @@ In case you want the side-effect to execute immediately and return the `Promise`
 
 ```kotlin:ank:playground
 import arrow.fx.*
-import arrow.fx.extensions.io.async.async
+import arrow.fx.extensions.bio.async.async
 
 fun main(args: Array<String>) {
 //sampleStart
@@ -50,8 +50,8 @@ Get the promised value, suspending the fiber running the action until the result
 
 ```kotlin:ank:playground
 import arrow.fx.*
-import arrow.fx.extensions.io.async.async
-import arrow.fx.extensions.io.monad.flatMap
+import arrow.fx.extensions.bio.async.async
+import arrow.fx.extensions.bio.monad.flatMap
 
 fun main(args: Array<String>) {
 //sampleStart
@@ -64,8 +64,8 @@ Promise.uncancelable<ForIO, Int>(IO.async()).flatMap { p ->
 
 ```kotlin:ank:playground
 import arrow.fx.*
-import arrow.fx.extensions.io.async.async
-import arrow.fx.extensions.io.monad.flatMap
+import arrow.fx.extensions.bio.async.async
+import arrow.fx.extensions.bio.monad.flatMap
 
 fun main(args: Array<String>) {
 //sampleStart
@@ -85,8 +85,8 @@ Fulfills the promise with a value. A promise cannot be fulfilled twice, so doing
 
 ```kotlin:ank:playground
 import arrow.fx.*
-import arrow.fx.extensions.io.async.async
-import arrow.fx.extensions.io.monad.flatMap
+import arrow.fx.extensions.bio.async.async
+import arrow.fx.extensions.bio.monad.flatMap
 
 fun main(args: Array<String>) {
 //sampleStart
@@ -102,8 +102,8 @@ println(result)
 
 ```kotlin:ank:playground
 import arrow.fx.*
-import arrow.fx.extensions.io.async.async
-import arrow.fx.extensions.io.monad.flatMap
+import arrow.fx.extensions.bio.async.async
+import arrow.fx.extensions.bio.monad.flatMap
 
 fun main(args: Array<String>) {
 //sampleStart
@@ -125,8 +125,8 @@ Breaks the promise with an exception. A promise cannot be broken twice, so doing
 
 ```kotlin:ank:playground
 import arrow.fx.*
-import arrow.fx.extensions.io.async.async
-import arrow.fx.extensions.io.monad.flatMap
+import arrow.fx.extensions.bio.async.async
+import arrow.fx.extensions.bio.monad.flatMap
 
 fun main(args: Array<String>) {
 //sampleStart
@@ -142,8 +142,8 @@ println(result)
 
 ```kotlin:ank:playground
 import arrow.fx.*
-import arrow.fx.extensions.io.async.async
-import arrow.fx.extensions.io.monad.flatMap
+import arrow.fx.extensions.bio.async.async
+import arrow.fx.extensions.bio.monad.flatMap
 
 fun main(args: Array<String>) {
 //sampleStart

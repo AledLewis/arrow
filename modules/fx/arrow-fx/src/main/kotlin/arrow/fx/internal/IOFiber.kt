@@ -1,14 +1,13 @@
 package arrow.fx.internal
 
 import arrow.fx.BIO
-import arrow.fx.ForIO
-import arrow.fx.IO
+import arrow.fx.BIOPartialOf
 import arrow.fx.IOConnection
 import arrow.fx.typeclasses.Fiber
 
-internal fun <A> IOFiber(promise: UnsafePromise<A>, conn: IOConnection): Fiber<ForIO, A> {
-  val join: IO<A> = BIO.Async { conn2, cb ->
-    conn2.push(IO { promise.remove(cb) })
+internal fun <E, A> BIOFiber(promise: UnsafePromise<E, A>, conn: IOConnection): Fiber<BIOPartialOf<E>, A> {
+  val join: BIO<E, A> = BIO.Async { conn2, cb ->
+    conn2.push(BIO { promise.remove(cb) })
 
     promise.get { a ->
       cb(a)

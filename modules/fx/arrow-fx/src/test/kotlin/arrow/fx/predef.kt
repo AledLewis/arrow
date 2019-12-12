@@ -14,7 +14,7 @@ import java.util.concurrent.ThreadPoolExecutor
 import java.util.concurrent.TimeUnit
 
 fun <A> EQ(EQA: Eq<A> = Eq.any(), timeout: Duration = 60.seconds): Eq<Kind<ForIO, A>> = Eq { a, b ->
-  arrow.core.Option.eq(arrow.core.Either.eq(Eq.any(), EQA)).run {
+  arrow.core.Option.eq(arrow.core.Either.eq(Eq.any(), arrow.core.Either.eq(Eq.any(), EQA))).run {
     a.fix().attempt().unsafeRunTimed(timeout).eqv(b.fix().attempt().unsafeRunTimed(timeout))
   }
 }

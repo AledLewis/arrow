@@ -1,6 +1,7 @@
 package arrow.benchmarks
 
 import arrow.fx.IO
+import arrow.fx.value
 import org.openjdk.jmh.annotations.Benchmark
 import org.openjdk.jmh.annotations.CompilerControl
 import org.openjdk.jmh.annotations.Fork
@@ -74,7 +75,7 @@ open class Map {
     var sum = 0L
     var i = 0
     while (i < iterations) {
-      sum += io.unsafeRunSync()
+      sum += io.unsafeRunSync().value()
       i += 1
     }
     return sum

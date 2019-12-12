@@ -21,8 +21,8 @@ import arrow.core.fix
 import arrow.core.value
 import arrow.fx.ForIO
 import arrow.fx.IO
-import arrow.fx.extensions.io.applicativeError.attempt
-import arrow.fx.extensions.io.async.async
+import arrow.fx.attemptIO
+import arrow.fx.extensions.bio.async.async
 import arrow.fx.mtl.eithert.async.async
 import arrow.fx.typeclasses.seconds
 import arrow.mtl.extensions.eithert.alternative.alternative
@@ -43,7 +43,7 @@ import io.kotlintest.properties.forAll
 class EitherTTest : UnitSpec() {
 
   fun <A> EQ(): Eq<Kind<EitherTPartialOf<ForIO, Throwable>, A>> = Eq { a, b ->
-    a.value().attempt().unsafeRunTimed(60.seconds) == b.value().attempt().unsafeRunTimed(60.seconds)
+    a.value().attemptIO().unsafeRunTimed(60.seconds) == b.value().attemptIO().unsafeRunTimed(60.seconds)
   }
 
   init {

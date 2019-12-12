@@ -21,8 +21,8 @@ import arrow.core.fix
 import arrow.core.value
 import arrow.fx.ForIO
 import arrow.fx.IO
-import arrow.fx.extensions.io.applicativeError.attempt
-import arrow.fx.extensions.io.async.async
+import arrow.fx.attemptIO
+import arrow.fx.extensions.bio.async.async
 import arrow.fx.mtl.optiont.async.async
 import arrow.fx.typeclasses.seconds
 import arrow.mtl.extensions.ComposedFunctorFilter
@@ -59,13 +59,13 @@ class OptionTTest : UnitSpec() {
   }
 
   private fun IOEitherEQ(): Eq<Kind<OptionTPartialOf<ForIO>, Either<Throwable, Int>>> = Eq { a, b ->
-    a.value().attempt().unsafeRunSync() == b.value().attempt().unsafeRunSync()
+    a.value().attemptIO().unsafeRunSync() == b.value().attemptIO().unsafeRunSync()
   }
 
   val NELM: Monad<ForNonEmptyList> = NonEmptyList.monad()
 
   fun <A> IOEQ(): Eq<Kind<OptionTPartialOf<ForIO>, A>> = Eq { a, b ->
-    a.value().attempt().unsafeRunTimed(60.seconds) == b.value().attempt().unsafeRunTimed(60.seconds)
+    a.value().attemptIO().unsafeRunTimed(60.seconds) == b.value().attemptIO().unsafeRunTimed(60.seconds)
   }
 
   init {

@@ -58,7 +58,7 @@ fun <A, B> IOOf<A>.redeemWith(fe: (Throwable) -> IOOf<B>, fb: (A) -> IOOf<B>): I
  *
  * @see flatMap if you need to act on the output of the original [IO].
  */
-fun <A> IOOf<A>.attempt(): IO<Either<Throwable, A>> =
+fun <A> IOOf<A>.attemptIO(): IO<Either<Throwable, A>> =
   BIO.Bind(fix(), IOFrame.attemptIO())
 
 /**

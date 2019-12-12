@@ -11,7 +11,7 @@ But, we have not given up support for suspend functions! If you would like to us
 ```kotlin:ank:playground
 import arrow.fx.IO
 import arrow.unsafe
-import arrow.fx.extensions.io.unsafeRun.runBlocking
+import arrow.fx.extensions.bio.unsafeRun.runBlocking
 import arrow.fx.extensions.fx
 //sampleStart
 suspend fun sayHello(): Unit =

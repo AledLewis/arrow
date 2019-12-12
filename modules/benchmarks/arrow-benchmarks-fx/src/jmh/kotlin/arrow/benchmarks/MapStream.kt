@@ -4,6 +4,8 @@ import arrow.core.None
 import arrow.core.Option
 import arrow.core.Some
 import arrow.fx.IO
+import arrow.fx.flatMap
+import arrow.fx.value
 import org.openjdk.jmh.annotations.Benchmark
 import org.openjdk.jmh.annotations.CompilerControl
 import org.openjdk.jmh.annotations.Fork
@@ -21,13 +23,13 @@ import java.util.concurrent.TimeUnit
 open class MapStream {
 
   @Benchmark
-  fun ioOne(): Long = IOStream.test(12000, 1).unsafeRunSync()
+  fun ioOne(): Long = IOStream.test(12000, 1).unsafeRunSync().value()
 
   @Benchmark
-  fun io30(): Long = IOStream.test(1000, 30).unsafeRunSync()
+  fun io30(): Long = IOStream.test(1000, 30).unsafeRunSync().value()
 
   @Benchmark
-  fun io120(): Long = IOStream.test(100, 120).unsafeRunSync()
+  fun io120(): Long = IOStream.test(100, 120).unsafeRunSync().value()
 
   @Benchmark
   fun zioOne(): Long =

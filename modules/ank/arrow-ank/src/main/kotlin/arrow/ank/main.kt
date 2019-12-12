@@ -3,6 +3,8 @@
 package arrow.ank
 
 import arrow.fx.IO
+import arrow.fx.extensions.bio.concurrent.concurrent
+import arrow.fx.extensions.bio.unsafeRun.runBlocking
 import arrow.unsafe
 import java.nio.file.Paths
 

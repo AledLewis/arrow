@@ -3,7 +3,8 @@ package arrow.benchmarks
 import arrow.core.extensions.list.foldable.foldLeft
 import arrow.fx.IO
 import arrow.fx.IODispatchers
-import arrow.fx.extensions.io.concurrent.parMapN
+import arrow.fx.extensions.bio.concurrent.parMapN
+import arrow.fx.value
 import org.openjdk.jmh.annotations.Benchmark
 import org.openjdk.jmh.annotations.CompilerControl
 import org.openjdk.jmh.annotations.Fork
@@ -31,5 +32,5 @@ open class ParMap {
 
   @Benchmark
   fun io(): Int =
-    ioHelper().unsafeRunSync()
+    ioHelper().unsafeRunSync().value()
 }

@@ -72,7 +72,7 @@ interface Concurrent<F> : Async<F> {
    * ```kotlin:ank:playground
    * import arrow.Kind
    * import arrow.fx.*
-   * import arrow.fx.extensions.io.concurrent.concurrent
+   * import arrow.fx.extensions.bio.concurrent.concurrent
    * import arrow.fx.typeclasses.Concurrent
    * import kotlinx.coroutines.Dispatchers
    *
@@ -107,7 +107,7 @@ interface Concurrent<F> : Async<F> {
    * ```kotlin:ank:playground
    * import arrow.Kind
    * import arrow.fx.*
-   * import arrow.fx.extensions.io.concurrent.concurrent
+   * import arrow.fx.extensions.bio.concurrent.concurrent
    * import arrow.fx.typeclasses.*
    * import kotlinx.coroutines.Dispatchers
    *
@@ -145,7 +145,7 @@ interface Concurrent<F> : Async<F> {
    * ```kotlin:ank:playground
    * import arrow.Kind
    * import arrow.fx.*
-   * import arrow.fx.extensions.io.concurrent.concurrent
+   * import arrow.fx.extensions.bio.concurrent.concurrent
    * import arrow.fx.typeclasses.*
    * import kotlinx.coroutines.Dispatchers
    *
@@ -309,7 +309,7 @@ interface Concurrent<F> : Async<F> {
    * import arrow.Kind
    * import arrow.core.k
    * import arrow.fx.IO
-   * import arrow.fx.extensions.io.concurrent.concurrent
+   * import arrow.fx.extensions.bio.concurrent.concurrent
    * import arrow.fx.fix
    * import arrow.fx.typeclasses.Concurrent
    * import arrow.fx.typeclasses.milliseconds
@@ -359,7 +359,7 @@ interface Concurrent<F> : Async<F> {
    * ```
    * import arrow.Kind
    * import arrow.fx.IO
-   * import arrow.fx.extensions.io.concurrent.concurrent
+   * import arrow.fx.extensions.bio.concurrent.concurrent
    * import arrow.fx.fix
    * import arrow.fx.typeclasses.Async
    * import arrow.fx.typeclasses.Concurrent
@@ -410,7 +410,7 @@ interface Concurrent<F> : Async<F> {
    * import arrow.fx.IO
    * import kotlinx.coroutines.Dispatchers
    * import arrow.fx.typeclasses.Concurrent
-   * import arrow.fx.extensions.io.concurrent.concurrent
+   * import arrow.fx.extensions.bio.concurrent.concurrent
    * import arrow.fx.fix
    *
    * fun main(args: Array<String>) {
@@ -572,7 +572,7 @@ interface Concurrent<F> : Async<F> {
    * import arrow.fx.*
    * import arrow.fx.typeclasses.Concurrent
    * import kotlinx.coroutines.Dispatchers
-   * import arrow.fx.extensions.io.concurrent.concurrent
+   * import arrow.fx.extensions.bio.concurrent.concurrent
    *
    * fun main(args: Array<String>) {
    *   fun <F> Concurrent<F>.example(): Kind<F, String> {
@@ -785,7 +785,7 @@ interface Concurrent<F> : Async<F> {
    * ```kotlin:ank:playground
    * import arrow.Kind
    * import arrow.fx.*
-   * import arrow.fx.extensions.io.concurrent.concurrent
+   * import arrow.fx.extensions.bio.concurrent.concurrent
    * import arrow.fx.typeclasses.Concurrent
    * import arrow.fx.typeclasses.seconds
    *
@@ -818,7 +818,7 @@ interface Concurrent<F> : Async<F> {
    * ```kotlin:ank:playground
    * import arrow.Kind
    * import arrow.fx.*
-   * import arrow.fx.extensions.io.concurrent.concurrent
+   * import arrow.fx.extensions.bio.concurrent.concurrent
    * import arrow.fx.typeclasses.Concurrent
    *
    * fun main(args: Array<String>) {
@@ -853,7 +853,7 @@ interface Concurrent<F> : Async<F> {
    * import arrow.core.Option
    * import arrow.core.Tuple3
    * import arrow.fx.*
-   * import arrow.fx.extensions.io.concurrent.concurrent
+   * import arrow.fx.extensions.bio.concurrent.concurrent
    * import arrow.fx.typeclasses.Concurrent
    *
    * fun main(args: Array<String>) {
@@ -919,7 +919,7 @@ interface Concurrent<F> : Async<F> {
    * import arrow.*
    * import arrow.fx.*
    * import arrow.fx.typeclasses.*
-   * import arrow.fx.extensions.io.concurrent.concurrent
+   * import arrow.fx.extensions.bio.concurrent.concurrent
    *
    * fun main(args: Array<String>) {
    *   //sampleStart
@@ -949,7 +949,7 @@ interface Concurrent<F> : Async<F> {
    * import arrow.*
    * import arrow.fx.*
    * import arrow.fx.typeclasses.*
-   * import arrow.fx.extensions.io.concurrent.concurrent
+   * import arrow.fx.extensions.bio.concurrent.concurrent
    *
    * fun main(args: Array<String>) {
    *   //sampleStart

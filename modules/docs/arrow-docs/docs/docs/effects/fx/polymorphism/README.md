@@ -20,9 +20,9 @@ In the following example, the program is declared polymorphic and then made conc
 import arrow.fx.IO
 import arrow.unsafe
 import arrow.Kind
-import arrow.fx.extensions.io.unsafeRun.runBlocking
-import arrow.fx.extensions.io.unsafeRun.unsafeRun
-import arrow.fx.extensions.io.concurrent.concurrent
+import arrow.fx.extensions.bio.unsafeRun.runBlocking
+import arrow.fx.extensions.bio.unsafeRun.unsafeRun
+import arrow.fx.extensions.bio.concurrent.concurrent
 import arrow.fx.extensions.fx
 import arrow.fx.typeclasses.Concurrent
 import arrow.fx.typeclasses.UnsafeRun

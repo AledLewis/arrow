@@ -19,7 +19,7 @@ interface Timer<F> {
    * import arrow.*
    * import arrow.fx.*
    * import arrow.fx.typeclasses.*
-   * import arrow.fx.extensions.io.concurrent.concurrent
+   * import arrow.fx.extensions.bio.concurrent.concurrent
    *
    * fun main(args: Array<String>) {
    *   //sampleStart

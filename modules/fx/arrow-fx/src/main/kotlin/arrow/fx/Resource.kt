@@ -71,7 +71,7 @@ inline fun <F, E, A> ResourceOf<F, E, A>.fix(): Resource<F, E, A> =
  * There is already a typeclass called bracket that we can use to make our life easier:
  * ```kotlin:ank:playground
  * import arrow.fx.IO
- * import arrow.fx.extensions.io.bracket.bracket
+ * import arrow.fx.extensions.bio.bracket.bracket
  *
  * object Consumer
  * object Handle
@@ -111,7 +111,7 @@ inline fun <F, E, A> ResourceOf<F, E, A>.fix(): Resource<F, E, A> =
  * import arrow.fx.IO
  * import arrow.fx.Resource
  * import arrow.fx.extensions.resource.monad.monad
- * import arrow.fx.extensions.io.bracket.bracket
+ * import arrow.fx.extensions.bio.bracket.bracket
  * import arrow.fx.fix
  *
  * object Consumer
@@ -157,7 +157,7 @@ interface Resource<F, E, A> : ResourceOf<F, E, A> {
    * ```kotlin:ank:playground
    * import arrow.fx.IO
    * import arrow.fx.Resource
-   * import arrow.fx.extensions.io.bracket.bracket
+   * import arrow.fx.extensions.bio.bracket.bracket
    * import arrow.fx.fix
    *
    * fun acquireResource(): IO<Int> = IO { println("Getting expensive resource"); 42 }
@@ -222,7 +222,7 @@ interface Resource<F, E, A> : ResourceOf<F, E, A> {
      * ```kotlin:ank:playground
      * import arrow.fx.IO
      * import arrow.fx.Resource
-     * import arrow.fx.extensions.io.bracket.bracket
+     * import arrow.fx.extensions.bio.bracket.bracket
      * import arrow.fx.fix
      *
      * fun acquireResource(): IO<Int> = IO { println("Getting expensive resource"); 42 }

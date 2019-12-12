@@ -12,6 +12,7 @@ import arrow.core.nonFatalOrThrow
 
 import arrow.fx.internal.Platform
 import arrow.fx.typeclasses.CancelToken
+import arrow.fx.typeclasses.Cause
 import arrow.fx.typeclasses.Disposable
 import arrow.fx.typeclasses.ExitCase
 import arrow.typeclasses.Applicative
@@ -103,7 +104,7 @@ data class FlowableK<out A>(val flowable: Flowable<out A>) : FlowableKOf<A> {
             } else {
               Flowable.defer { use(a).value() }
                 .doOnError { t: Throwable ->
-                  Flowable.defer { release(a, ExitCase.Error(t.nonFatalOrThrow())).value() }.subscribe({ emitter.onError(t) }, { e -> emitter.onError(Platform.composeErrors(t, e)) })
+                  Flowable.defer { release(a, ExitCase.Error(Cause.Exception(t.nonFatalOrThrow()))).value() }.subscribe({ emitter.onError(t) }, { e -> emitter.onError(Platform.composeErrors(t, e)) })
                 }.doOnComplete {
                   Flowable.defer { release(a, ExitCase.Completed).value() }.subscribe({ emitter.onComplete() }, emitter::onError)
                 }.doOnCancel {

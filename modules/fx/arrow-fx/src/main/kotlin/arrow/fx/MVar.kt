@@ -21,8 +21,8 @@ interface MVar<F, A> {
    *
    * ```kotlin:ank:playground
    * import arrow.fx.*
-   * import arrow.fx.extensions.io.async.async
-   * import arrow.fx.extensions.io.monad.flatMap
+   * import arrow.fx.extensions.bio.async.async
+   * import arrow.fx.extensions.bio.monad.flatMap
    *
    * fun main(args: Array<String>) {
    * //sampleStart
@@ -46,8 +46,8 @@ interface MVar<F, A> {
    *
    * ```kotlin:ank:playground
    * import arrow.fx.*
-   * import arrow.fx.extensions.io.async.async
-   * import arrow.fx.extensions.io.monad.flatMap
+   * import arrow.fx.extensions.bio.async.async
+   * import arrow.fx.extensions.bio.monad.flatMap
    *
    * fun main(args: Array<String>) {
    * //sampleStart
@@ -72,8 +72,8 @@ interface MVar<F, A> {
    *
    * ```kotlin:ank:playground
    * import arrow.fx.*
-   * import arrow.fx.extensions.io.async.async
-   * import arrow.fx.extensions.io.monad.flatMap
+   * import arrow.fx.extensions.bio.async.async
+   * import arrow.fx.extensions.bio.monad.flatMap
    *
    * fun main(args: Array<String>) {
    * //sampleStart
@@ -96,8 +96,8 @@ interface MVar<F, A> {
    *
    * ```kotlin:ank:playground
    * import arrow.fx.*
-   * import arrow.fx.extensions.io.async.async
-   * import arrow.fx.extensions.io.monad.flatMap
+   * import arrow.fx.extensions.bio.async.async
+   * import arrow.fx.extensions.bio.monad.flatMap
    *
    * fun main(args: Array<String>) {
    * //sampleStart
@@ -121,8 +121,8 @@ interface MVar<F, A> {
    *
    * ```kotlin:ank:playground
    * import arrow.fx.*
-   * import arrow.fx.extensions.io.async.async
-   * import arrow.fx.extensions.io.monad.flatMap
+   * import arrow.fx.extensions.bio.async.async
+   * import arrow.fx.extensions.bio.monad.flatMap
    *
    * fun main(args: Array<String>) {
    * //sampleStart
@@ -147,8 +147,8 @@ interface MVar<F, A> {
    * ```kotlin:ank:playground
    * import arrow.core.*
    * import arrow.fx.*
-   * import arrow.fx.extensions.io.async.async
-   * import arrow.fx.extensions.io.monad.flatMap
+   * import arrow.fx.extensions.bio.async.async
+   * import arrow.fx.extensions.bio.monad.flatMap
    *
    * fun main(args: Array<String>) {
    * //sampleStart
@@ -173,9 +173,9 @@ interface MVar<F, A> {
    * ```kotlin:ank:playground
    * import arrow.core.toT
    * import arrow.fx.*
-   * import arrow.fx.extensions.io.async.async
-   * import arrow.fx.extensions.io.monad.flatMap
-   * import arrow.fx.extensions.io.monad.map
+   * import arrow.fx.extensions.bio.async.async
+   * import arrow.fx.extensions.bio.monad.flatMap
+   * import arrow.fx.extensions.bio.monad.map
    * fun main(args: Array<String>) {
    * //sampleStart
    * val mvar = MVar.factoryUncancelable(IO.async())
@@ -208,7 +208,7 @@ interface MVar<F, A> {
      *
      * ```kotlin:ank:playground
      * import arrow.fx.*
-     * import arrow.fx.extensions.io.concurrent.concurrent
+     * import arrow.fx.extensions.bio.concurrent.concurrent
      *
      * fun main(args: Array<String>) {
      *   //sampleStart
@@ -225,7 +225,7 @@ interface MVar<F, A> {
      *
      * ```kotlin:ank:playground
      * import arrow.fx.*
-     * import arrow.fx.extensions.io.concurrent.concurrent
+     * import arrow.fx.extensions.bio.concurrent.concurrent
      *
      * fun main(args: Array<String>) {
      *   //sampleStart
@@ -242,7 +242,7 @@ interface MVar<F, A> {
      *
      * ```kotlin:ank:playground
      * import arrow.fx.*
-     * import arrow.fx.extensions.io.concurrent.concurrent
+     * import arrow.fx.extensions.bio.concurrent.concurrent
      *
      * fun main(args: Array<String>) {
      *   //sampleStart
@@ -259,7 +259,7 @@ interface MVar<F, A> {
      *
      * ```kotlin:ank:playground
      * import arrow.fx.*
-     * import arrow.fx.extensions.io.async.async
+     * import arrow.fx.extensions.bio.async.async
      *
      * fun main(args: Array<String>) {
      *   //sampleStart
@@ -276,7 +276,7 @@ interface MVar<F, A> {
      *
      * ```kotlin:ank:playground
      * import arrow.fx.*
-     * import arrow.fx.extensions.io.async.async
+     * import arrow.fx.extensions.bio.async.async
      *
      * fun main(args: Array<String>) {
      *   //sampleStart
@@ -323,7 +323,7 @@ interface MVar<F, A> {
  *
  * ```kotlin:ank:playground
  * import arrow.fx.*
- * import arrow.fx.extensions.io.concurrent.concurrent
+ * import arrow.fx.extensions.bio.concurrent.concurrent
  *
  * fun main(args: Array<String>) {
  *   //sampleStart
@@ -341,7 +341,7 @@ interface MVarFactory<F> {
    *
    * ```kotlin:ank:playground
    * import arrow.fx.*
-   * import arrow.fx.extensions.io.async.async
+   * import arrow.fx.extensions.bio.async.async
    *
    * fun main(args: Array<String>) {
    *   //sampleStart
@@ -358,7 +358,7 @@ interface MVarFactory<F> {
    *
    * ```kotlin:ank:playground
    * import arrow.fx.*
-   * import arrow.fx.extensions.io.async.async
+   * import arrow.fx.extensions.bio.async.async
    *
    * fun main(args: Array<String>) {
    *   //sampleStart

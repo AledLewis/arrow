@@ -26,6 +26,7 @@ import arrow.fx.internal.Platform.unsafeResync
 import arrow.fx.internal.ShiftTick
 import arrow.fx.internal.UnsafePromise
 import arrow.fx.internal.scheduler
+import arrow.fx.internal.toEither
 import arrow.fx.typeclasses.CancelToken
 import arrow.fx.typeclasses.Disposable
 import arrow.fx.typeclasses.Duration
@@ -185,7 +186,7 @@ sealed class BIO<out E, out A> : BIOOf<E, A> {
      * ```
      */
     fun <A> later(f: () -> A): IO<A> =
-      defer { Pure<Nothing, A>(f()) }
+      defer { Pure(f()) }
 
     /**
      * Defer a computation that results in an [IO] value.
@@ -756,16 +757,16 @@ sealed class BIO<out E, out A> : BIOOf<E, A> {
   fun uncancelable(): BIO<E, A> =
     ContextSwitch(this, ContextSwitch.makeUncancelable, ContextSwitch.disableUncancelable)
 
-  internal data class Pure<E, out A>(val a: A) : BIO<E, A>() {
+  internal data class Pure<out A>(val a: A) : BIO<Nothing, A>() {
     // Pure can be replaced by its value
-    override fun <B> map(f: (A) -> B): BIO<E, B> = Suspend { Pure<E, B>(f(a)) }
+    override fun <B> map(f: (A) -> B): BIO<Nothing, B> = Suspend { Pure(f(a)) }
 
-    override fun unsafeRunTimedTotal(limit: Duration): Option<Either<E, A>> = Some(Right(a))
+    override fun unsafeRunTimedTotal(limit: Duration): Option<Either<Nothing, A>> = Some(Right(a))
   }
 
-  internal data class RaiseError<E>(val exception: Throwable) : BIO<E, Nothing>() {
+  internal data class RaiseError(val exception: Throwable) : BIO<Nothing, Nothing>() {
     // Errors short-circuit
-    override fun <B> map(f: (Nothing) -> B): BIO<E, B> = this
+    override fun <B> map(f: (Nothing) -> B): BIO<Nothing, B> = this
 
     override fun unsafeRunTimedTotal(limit: Duration): Option<Nothing> = throw exception
   }
@@ -852,7 +853,7 @@ sealed class BIO<out E, out A> : BIOOf<E, A> {
  * @see handleErrorWith for a version that can resolve the error using an effect
  */
 fun <E, A> BIOOf<E, A>.handleError(f: (Throwable) -> A, fe: (E) -> A): IO<A> =
-  handleErrorWith({ e -> BIO.Pure<Nothing, A>(f(e)) }, { e -> BIO.Pure(fe(e)) })
+  handleErrorWith({ e -> BIO.Pure(f(e)) }, { e -> BIO.Pure(fe(e)) })
 
 /**
  * Handle the error by resolving the error with an effect that results in [A].
@@ -879,6 +880,12 @@ fun <E, A> BIOOf<E, A>.handleError(f: (Throwable) -> A, fe: (E) -> A): IO<A> =
 fun <E, A, E2> BIOOf<E, A>.handleErrorWith(f: (Throwable) -> BIOOf<E2, A>, fe: (E) -> BIOOf<E2, A>): BIO<E2, A> =
   BIO.Bind(fix(), IOFrame.Companion.ErrorHandler(f, fe))
 
+fun <E, A> BIOOf<E, A>.fallbackTo(f: () -> A): BIOOf<E, A> =
+  handleError({ f() }, { f() })
+
+fun <E, A, E2> BIOOf<E, A>.fallbackWith(fa: BIOOf<E2, A>): BIO<E2, A> =
+  handleErrorWith({ fa }, { fa })
+
 /**
  * Transform the [IO] value of [A] by sequencing an effect [IO] that results in [B].
  *
@@ -904,6 +911,20 @@ fun <E, A, E2 : E, B> BIOOf<E, A>.flatMap(f: (A) -> BIOOf<E2, B>): BIO<E2, B> =
     is BIO.RaiseLeft -> bio as BIO<E2, B>
     else -> BIO.Bind(bio) { f(it).fix() }
   }
+
+fun <E, A, E2> BIOOf<E, A>.flatMapLeft(f: (E) -> BIOOf<E2, A>): BIO<E2, A> =
+  when (val bio = fix()) {
+    is BIO.RaiseLeft -> f(bio.left).fix()
+    is BIO.Pure,
+    is BIO.RaiseError -> bio as BIO<E2, A>
+    else -> BIO.Bind(bio, IOFrame.Companion.MapError(f))
+  }
+
+fun <E, A, E2> BIOOf<E, A>.mapLeft(f: (E) -> E2): BIO<E2, A> =
+  bimap(f, ::identity)
+
+fun <E, A, E2, B> BIOOf<E, A>.bimap(fe: (E) -> E2, fa: (A) -> B): BIO<E2, B> =
+  mapLeft(fe).map(fa)
 
 /**
  * Compose this [IO] with another [IO] [fb] while ignoring the output.
@@ -1097,29 +1118,14 @@ fun <E, A> BIOOf<E, A>.fork(ctx: CoroutineContext): BIO<E, Fiber<BIOPartialOf<E>
     cb(BIOResult.Right(BIOFiber(promise, conn)))
   }
 
+// IO API overloads
+
 fun <A> Either<Nothing, A>.value(): A =
   when (this) {
     is Left -> TODO()
     is Either.Right -> this.b
   }
 
-fun <A> BIOResult<Nothing, A>.toEither(): Either<Throwable, A> =
-  when (this) {
-    is BIOResult.Right -> Right(this.a)
-    is BIOResult.Left -> TODO()
-    is BIOResult.Error -> Left(this.exception)
-  }
-
-fun <A, O> (((Either<Throwable, A>) -> Unit) -> O).toBIO(): ((BIOResult<Nothing, A>) -> Unit) -> O = { callback ->
-  invoke { either ->
-    when (either) {
-      is Left -> callback(BIOResult.Error(either.a))
-      is Either.Right -> callback(BIOResult.Right(either.b))
-    }
-  }
-}
-
-@JvmName("test2")
 fun <A> IOOf<A>.unsafeRunAsyncCancellable(onCancel: OnCancel = Silent, cb: (Either<Throwable, A>) -> Unit): Disposable =
   fix().runAsyncCancellable(onCancel, cb.compose<BIOResult<Nothing, A>, Either<Throwable, A>, Unit> { it.toEither() }.andThen { IO.unit }).unsafeRunSync().value()
 
@@ -1133,3 +1139,116 @@ fun <A> IOOf<A>.unsafeRunSync(): A =
   fix().unsafeRunTimed(Duration.INFINITE)
     .fold({ throw IllegalArgumentException("IO execution should yield a valid result") }, ::identity)
     .value()
+
+/**
+ * Redeem an [IO] to an [IO] of [B] by resolving the error **or** mapping the value [A] to [B].
+ *
+ * ```kotlin:ank:playground
+ * import arrow.fx.IO
+ *
+ * fun main(args: Array<String>) {
+ *   val result =
+ *   //sampleStart
+ *   IO.raiseError<Int>(RuntimeException("Hello from Error"))
+ *     .redeem({ e -> e.message ?: "" }, Int::toString)
+ *   //sampleEnd
+ *   println(result.unsafeRunSync())
+ * }
+ * ```
+ */
+fun <A, B> IOOf<A>.redeem(ft: (Throwable) -> B, fb: (A) -> B): IO<B> =
+  BIO.Bind(fix(), IOFrame.Companion.Redeem<Nothing, A, B>(ft, ::identity, fb))
+
+/**
+ * Redeem an [IO] to an [IO] of [B] by resolving the error **or** mapping the value [A] to [B] **with** an effect.
+ *
+ * ```kotlin:ank:playground
+ * import arrow.fx.IO
+ *
+ * fun main(args: Array<String>) {
+ *   val result =
+ *   //sampleStart
+ *   IO.just("1")
+ *     .redeemWith({ e -> IO.just(-1) }, { str -> IO { str.toInt() } })
+ *   //sampleEnd
+ *   println(result.unsafeRunSync())
+ * }
+ * ```
+ */
+fun <A, B> IOOf<A>.redeemWith(fe: (Throwable) -> IOOf<B>, fb: (A) -> IOOf<B>): IO<B> =
+  BIO.Bind(fix(), IOFrame.Companion.RedeemWith<Nothing, A, Nothing, B>(fe, ::identity, fb))
+
+/**
+ * Safely attempts the [IO] and lift any errors to the value side into [Either].
+ *
+ * ```kotlin:ank:playground
+ * import arrow.fx.IO
+ *
+ * fun main(args: Array<String>) {
+ *   //sampleStart
+ *   val resultA = IO.raiseError<Int>(RuntimeException("Boom!")).attempt()
+ *   val resultB = IO.just("Hello").attempt()
+ *   //sampleEnd
+ *   println("resultA: ${resultA.unsafeRunSync()}, resultB: ${resultB.unsafeRunSync()}")
+ * }
+ * ```
+ *
+ * @see flatMap if you need to act on the output of the original [IO].
+ */
+fun <A> IOOf<A>.attemptIO(): IO<Either<Throwable, A>> =
+  BIO.Bind(fix(), IOFrame.attemptIO())
+
+/**
+ * Handle the error by mapping the error to a value of [A].
+ *
+ * ```kotlin:ank:playground
+ * import arrow.fx.IO
+ * import arrow.fx.handleError
+ *
+ * fun main(args: Array<String>) {
+ *   //sampleStart
+ *   val result = IO.raiseError<Int>(RuntimeException("Boom"))
+ *     .handleError { e -> "Goodbye World! after $e" }
+ *   //sampleEnd
+ *   println(result.unsafeRunSync())
+ * }
+ * ```
+ *
+ * @see handleErrorWith for a version that can resolve the error using an effect
+ */
+fun <A> IOOf<A>.handleError(f: (Throwable) -> A): IO<A> =
+  handleErrorWith { e -> BIO.Pure(f(e)) }
+
+/**
+ * Handle the error by resolving the error with an effect that results in [A].
+ *
+ * ```kotlin:ank:playground
+ * import arrow.fx.IO
+ * import arrow.fx.handleErrorWith
+ * import arrow.fx.typeclasses.milliseconds
+ *
+ * fun main(args: Array<String>) {
+ *   fun getMessage(e: Throwable): IO<String> = IO.sleep(250.milliseconds)
+ *     .followedBy(IO.effect { "Delayed goodbye World! after $e" })
+ *
+ *   //sampleStart
+ *   val result = IO.raiseError<Int>(RuntimeException("Boom"))
+ *     .handleErrorWith { e -> getMessage(e) }
+ *   //sampleEnd
+ *   println(result.unsafeRunSync())
+ * }
+ * ```
+ *
+ * @see handleErrorWith for a version that can resolve the error using an effect
+ */
+fun <A> IOOf<A>.handleErrorWith(f: (Throwable) -> IOOf<A>): IO<A> =
+  BIO.Bind(fix(), IOFrame.Companion.ErrorHandler<Nothing, A, Nothing>(f, ::identity))
+
+internal fun <A, O> (((Either<Throwable, A>) -> Unit) -> O).toBIO(): ((BIOResult<Nothing, A>) -> Unit) -> O = { callback ->
+  invoke { either ->
+    when (either) {
+      is Left -> callback(BIOResult.Error(either.a))
+      is Either.Right -> callback(BIOResult.Right(either.b))
+    }
+  }
+}

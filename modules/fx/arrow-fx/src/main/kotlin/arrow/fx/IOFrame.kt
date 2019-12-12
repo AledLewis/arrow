@@ -39,8 +39,15 @@ internal interface IOFrame<in E, in A, out B> : (A) -> B {
       override fun handleError(e: E): BIO<E2, A> = fe(e).fix()
     }
 
+    internal class MapError<E, A, E2>(val fe: (E) -> BIOOf<E2, A>) : IOFrame<E, A, BIO<E2, A>> {
+      override fun invoke(a: A): BIO<E2, A> = Pure(a)
+      override fun recover(e: Throwable): BIO<E2, A> = BIO.RaiseError(e)
+      override fun handleError(e: E): BIO<E2, A> = fe(e).fix()
+    }
+
     @Suppress("UNCHECKED_CAST")
     fun <E, A> attemptBIO(): (A) -> BIO<Throwable, Either<E, A>> = AttemptBIO as (A) -> BIO<Throwable, Either<E, A>>
+
     fun <A> attemptIO(): (A) -> IO<Either<Throwable, A>> = AttemptIO as (A) -> IO<Either<Throwable, A>>
 
     private object AttemptBIO : IOFrame<Any?, Any?, BIO<Throwable, Either<Any?, Any?>>> {

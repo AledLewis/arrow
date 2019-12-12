@@ -1,6 +1,7 @@
 package arrow.fx.internal
 
 import arrow.core.Either
+import arrow.core.Right
 import arrow.core.nonFatalOrThrow
 import arrow.fx.BIO
 import arrow.fx.BIOOf
@@ -28,6 +29,13 @@ sealed class BIOResult<out E, out A> {
       is Error -> ifException(this.exception)
     }
 }
+
+fun <A> BIOResult<Nothing, A>.toEither(): Either<Throwable, A> =
+  when (this) {
+    is BIOResult.Right -> arrow.core.Right(this.a)
+    is BIOResult.Left -> TODO()
+    is BIOResult.Error -> Either.Left(this.exception)
+  }
 
 internal object BIOBracket {
 

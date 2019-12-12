@@ -17,6 +17,11 @@ import arrow.fx.typeclasses.CancelToken
 import arrow.fx.typeclasses.ExitCase
 import kotlinx.atomicfu.atomic
 
+// class AsyncSyntax<E, A>(private val callback: (BIOResult<E, A>) -> Unit) {
+//  fun success(a: A): Unit = callback(BIOResult.Right(a))
+//  fun fail(e: E): Unit = callback(BIOResult.Left(e))
+//  fun error(t: Throwable): Unit = callback(BIOResult.Error(t))
+// }
 sealed class BIOResult<out E, out A> {
   data class Right<A>(val a: A) : BIOResult<Nothing, A>()
   data class Left<E>(val e: E) : BIOResult<E, Nothing>()

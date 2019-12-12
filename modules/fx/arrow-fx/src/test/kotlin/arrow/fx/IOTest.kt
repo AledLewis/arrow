@@ -13,6 +13,7 @@ import arrow.fx.extensions.bio.concurrent.parMapN
 import arrow.fx.extensions.bio.dispatchers.dispatchers
 import arrow.fx.extensions.fx
 import arrow.fx.extensions.toIO
+import arrow.fx.internal.BIOResult
 import arrow.fx.internal.parMap2
 import arrow.fx.internal.parMap3
 import arrow.fx.typeclasses.ExitCase
@@ -95,6 +96,14 @@ class IOTest : UnitSpec() {
       }
     }
 
+    "should yield immediate left pure value" {
+      val run = IO.raiseLeft(1).unsafeRunSync()
+
+      val expected = Left(1)
+
+      run shouldBe expected
+    }
+
     "should return immediate value by uncancelable" {
       val run = IO.just(1).uncancelable().unsafeRunSync().value()
 
@@ -126,10 +135,23 @@ class IOTest : UnitSpec() {
       value shouldBe null
     }
 
+    "should return a null left value from unsafeRunSync" {
+      val value = IO.raiseLeft<Int?>(null).unsafeRunSync()
+
+      value shouldBe Left(null)
+    }
+
     "should complete when running a pure value with unsafeRunAsync" {
       val expected = 0
       IO.just(expected).unsafeRunAsync { either: Either<Throwable, Int> ->
         either.fold({ fail("") }, { it shouldBe expected })
+      }
+    }
+
+    "should complete when running a left value with unsafeRunAsync" {
+      val expected = 0
+      BIO.raiseLeft(expected).unsafeRunAsync { either: BIOResult<Int, String> ->
+        either.fold({ fail("") }, { it shouldBe expected }, { fail("") })
       }
     }
 
@@ -179,6 +201,13 @@ class IOTest : UnitSpec() {
       val expected = 0
       IO.just(expected).runAsync { either: Either<Throwable, Int> ->
         either.fold({ fail("") }, { IO { it shouldBe expected } })
+      }
+    }
+
+    "should complete when running a pure left value with runAsync" {
+      val expected = 0
+      IO.raiseLeft(expected).runAsync { either: BIOResult<Int, String> ->
+        either.fold({ fail("") }, { IO { it shouldBe expected } }, { fail("") })
       }
     }
 
@@ -233,10 +262,34 @@ class IOTest : UnitSpec() {
       run shouldBe expected
     }
 
+    "should mapLeft values correctly on success" {
+      val run = IO.raiseLeft(1).mapLeft { it + 1 }.unsafeRunSync()
+
+      val expected = Left(2)
+
+      run shouldBe expected
+    }
+
     "should flatMap values correctly on success" {
       val run = IO.just(1).flatMap { num -> IO { num + 1 } }.unsafeRunSync().value()
 
       val expected = 2
+
+      run shouldBe expected
+    }
+
+    "should flatMapLeft values correctly on left" {
+      val run = IO.raiseLeft(1).flatMapLeft { num -> BIO.raiseLeft(num + 1) }.unsafeRunSync()
+
+      val expected = Left(2)
+
+      run shouldBe expected
+    }
+
+    "should flatMapLeft recover correctly on left" {
+      val run = IO.raiseLeft(1).flatMapLeft { num -> BIO.just(num + 1) }.unsafeRunSync()
+
+      val expected = Right(2)
 
       run shouldBe expected
     }

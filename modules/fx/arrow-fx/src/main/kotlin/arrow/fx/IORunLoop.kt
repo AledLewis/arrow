@@ -430,9 +430,9 @@ internal object IORunLoop {
       if (canCall) {
         canCall = false
         when (either) {
-          is BIOResult.Error -> BIO.RaiseError<Nothing>(either.exception)
+          is BIOResult.Error -> BIO.RaiseError(either.exception)
           is BIOResult.Left -> BIO.RaiseLeft(either.e)
-          is BIOResult.Right -> BIO.Pure<Nothing, Any?>(either.a)
+          is BIOResult.Right -> BIO.Pure(either.a)
         }.let { r ->
           if (shouldTrampoline) {
             this.value = r
@@ -448,8 +448,8 @@ internal object IORunLoop {
       if (canCall) {
         canCall = false
         result.fold(
-          { a -> BIO.Pure<Nothing, Any?>(a) },
-          { e -> BIO.RaiseError<Nothing>(e) }
+          { a -> BIO.Pure(a) },
+          { e -> BIO.RaiseError(e) }
         ).let { r ->
           if (shouldTrampoline) {
             this.value = r

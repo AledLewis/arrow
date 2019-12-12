@@ -145,6 +145,8 @@ sealed class BIO<out E, out A> : BIOOf<E, A> {
      */
     fun <A> raiseError(e: Throwable): IO<A> = RaiseError(e)
 
+    fun <E> raiseLeft(e: E): BIO<E, Nothing> = RaiseLeft(e)
+
     /**
      *  Sleeps for a given [duration] without blocking a thread.
      *
@@ -912,16 +914,16 @@ fun <E, A, E2 : E, B> BIOOf<E, A>.flatMap(f: (A) -> BIOOf<E2, B>): BIO<E2, B> =
     else -> BIO.Bind(bio) { f(it).fix() }
   }
 
-fun <E, A, E2> BIOOf<E, A>.flatMapLeft(f: (E) -> BIOOf<E2, A>): BIO<E2, A> =
+fun <E, A, E2, B : A> BIOOf<E, A>.flatMapLeft(f: (E) -> BIOOf<E2, A>): BIO<E2, A> =
   when (val bio = fix()) {
     is BIO.RaiseLeft -> f(bio.left).fix()
     is BIO.Pure,
-    is BIO.RaiseError -> bio as BIO<E2, A>
+    is BIO.RaiseError -> bio as BIO<E2, B>
     else -> BIO.Bind(bio, IOFrame.Companion.MapError(f))
   }
 
 fun <E, A, E2> BIOOf<E, A>.mapLeft(f: (E) -> E2): BIO<E2, A> =
-  bimap(f, ::identity)
+  flatMapLeft { e -> BIO.RaiseLeft(f(e)) }
 
 fun <E, A, E2, B> BIOOf<E, A>.bimap(fe: (E) -> E2, fa: (A) -> B): BIO<E2, B> =
   mapLeft(fe).map(fa)

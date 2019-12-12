@@ -25,7 +25,7 @@ object IODispatchers {
   }.asCoroutineContext()
 }
 
-fun ExecutorService.asCoroutineContext(): CoroutineContext =
+internal fun ExecutorService.asCoroutineContext(): CoroutineContext =
   ExecutorServiceContext(this)
 
 private class ExecutorServiceContext(val pool: ExecutorService) : AbstractCoroutineContextElement(ContinuationInterceptor), ContinuationInterceptor {

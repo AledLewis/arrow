@@ -16,8 +16,8 @@ import arrow.fx.Timer
 import arrow.fx.extensions.bio.concurrent.concurrent
 import arrow.fx.extensions.bio.dispatchers.dispatchers
 import arrow.fx.fix
+import arrow.fx.internal.toEither
 import arrow.fx.toBIO
-import arrow.fx.toEither
 import arrow.fx.typeclasses.Async
 import arrow.fx.typeclasses.Bracket
 import arrow.fx.typeclasses.CancelToken

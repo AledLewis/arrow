@@ -130,7 +130,7 @@ interface Bracket<F, E> : MonadError<F, E> {
    * @see [bracket] for the more general operation
    */
   fun <A> Kind<F, A>.guarantee(finalizer: Kind<F, Unit>): Kind<F, A> =
-    bracket({ finalizer }, { this })
+    unit().bracket({ finalizer }, { this })
 
   /**
    * Executes the given `finalizer` when the source is finished, either in success or in error, or if canceled, allowing
@@ -140,10 +140,25 @@ interface Bracket<F, E> : MonadError<F, E> {
    * Prefer [bracketCase] for the acquisition and release of resources.
    *
    * @see [guarantee] for the simpler version
-   *
    * @see [bracketCase] for the more general operation
-   *
    */
   fun <A> Kind<F, A>.guaranteeCase(finalizer: (ExitCase<E>) -> Kind<F, Unit>): Kind<F, A> =
-    bracketCase({ _, e -> finalizer(e) }, { this })
+    unit().bracketCase({ _, e -> finalizer(e) }, { this })
+
+  /**
+   * Executes the given [finalizer] when the source is canceled, allowing for registering cancel tokens for any [F].
+   *
+   * This can be used instead of bracket when the
+   *
+   * @see [guarantee] for the simpler version
+   * @see [bracketCase] for the more general operation
+   */
+  fun <A> Kind<F, A>.onCancel(finalizer: CancelToken<F>): Kind<F, A> =
+    guaranteeCase { exitCase ->
+      when (exitCase) {
+        ExitCase.Canceled -> finalizer
+        ExitCase.Completed -> unit()
+        is Error -> unit()
+      }
+    }
 }

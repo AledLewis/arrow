@@ -8,6 +8,7 @@ import arrow.fx.typeclasses.ExitCase
 import arrow.test.generators.applicativeError
 import arrow.test.generators.functionAToB
 import arrow.test.generators.throwable
+import arrow.test.generators.unit
 import arrow.typeclasses.Eq
 import io.kotlintest.properties.Gen
 import io.kotlintest.properties.forAll
@@ -30,7 +31,8 @@ object BracketLaws {
       Law("Bracket: guarantee is derived from bracket") { BF.guaranteeIsDerivedFromBracket(BF.just(Unit), EQ) },
       Law("Bracket: guaranteeCase is derived from bracketCase") { BF.guaranteeCaseIsDerivedFromBracketCase({ BF.just(Unit) }, EQ) },
       Law("Bracket: bracket propagates transformer effects") { BF.bracketPropagatesTransformerEffects(EQ) },
-      Law("Bracket: bracket must run release task") { BF.bracketMustRunReleaseTask(EQ) }
+      Law("Bracket: bracket must run release task") { BF.bracketMustRunReleaseTask(EQ) },
+      Law("Bracker: onCancel is derived from guaranteeCase") { BF.onCancelIsDerivedFromGuaranteeCase(EQ) }
     )
 
   fun <F> Bracket<F, Throwable>.bracketCaseWithJustUnitEqvMap(EQ: Eq<Kind<F, Int>>): Unit =
@@ -105,7 +107,7 @@ object BracketLaws {
 
   fun <F> Bracket<F, Throwable>.bracketMustRunReleaseTask(EQ: Eq<Kind<F, Int>>): Unit =
     forAll(Gen.int(), Gen.int().applicativeError(this)) { i, fa ->
-      val msg: AtomicIntW = AtomicIntW(0)
+      val msg = AtomicIntW(0)
       just(i).bracket<Int, Int>(
         release = { ii -> msg.value = ii; unit() },
         use = { throw Throwable("Expected failure!") }
@@ -113,5 +115,10 @@ object BracketLaws {
         .attempt()
         .map { msg.value }
         .equalUnderTheLaw(just(i), EQ)
+    }
+
+  fun <F> Bracket<F, Throwable>.onCancelIsDerivedFromGuaranteeCase(EQ: Eq<Kind<F, Int>>): Unit =
+    forAll(Gen.int().applicativeError(this), Gen.unit().applicativeError(this)) { fa, token ->
+      fa.onCancel(token).equalUnderTheLaw(fa.guaranteeCase { token }, EQ)
     }
 }

@@ -112,7 +112,7 @@ interface IOApplicativeError : ApplicativeError<BIOPartialOf<Nothing>, Throwable
     Redeem(fe, fb)
 
   override fun <A> raiseError(e: Throwable): IO<A> =
-    IO.raiseError(e)
+    IO.raiseException(e)
 }
 
 interface IOMonadError : MonadError<BIOPartialOf<Nothing>, Throwable>, IOApplicativeError, IOMonad {
@@ -135,7 +135,7 @@ interface IOMonadError : MonadError<BIOPartialOf<Nothing>, Throwable>, IOApplica
     RedeemWith(fe, fb)
 
   override fun <A> raiseError(e: Throwable): IO<A> =
-    IO.raiseError(e)
+    IO.raiseException(e)
 }
 
 interface IOMonadThrow : MonadThrow<BIOPartialOf<Nothing>>, IOMonadError
@@ -296,7 +296,7 @@ fun <A> BIO.Companion.fx(c: suspend ConcurrentSyntax<BIOPartialOf<Nothing>>.() -
  * Right value or alternatively to the result of applying the specified function to this Left value.
  */
 fun <E, A> Either<E, A>.toIO(f: (E) -> Throwable): IO<A> =
-  fold({ IO.raiseError(f(it)) }, { IO.just(it) })
+  fold({ IO.raiseException(f(it)) }, { IO.just(it) })
 
 /**
  * converts this Either to an IO. The resulting IO will evaluate to this Eithers

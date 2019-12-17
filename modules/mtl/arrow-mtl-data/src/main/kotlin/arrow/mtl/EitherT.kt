@@ -101,6 +101,10 @@ data class EitherT<F, A, B>(private val value: Kind<F, Either<A, B>>) : EitherTO
     EitherT(value.map { f(it) })
   }
 
+  fun <C, D> transformF(MF: Monad<F>, f: (Either<A, B>) -> Kind<F, Either<C, D>>): EitherT<F, C, D> = MF.run {
+    EitherT(value.flatMap { f(it) })
+  }
+
   fun <C> subflatMap(FF: Functor<F>, f: (B) -> Either<A, C>): EitherT<F, A, C> =
     transform(FF) { it.flatMap(f = f) }
 

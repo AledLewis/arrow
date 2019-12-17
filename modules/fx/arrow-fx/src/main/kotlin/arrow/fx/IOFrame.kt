@@ -41,7 +41,7 @@ internal interface IOFrame<in E, in A, out B> : (A) -> B {
 
     internal class MapError<E, A, E2>(val fe: (E) -> BIOOf<E2, A>) : IOFrame<E, A, BIO<E2, A>> {
       override fun invoke(a: A): BIO<E2, A> = Pure(a)
-      override fun recover(e: Throwable): BIO<E2, A> = BIO.RaiseError(e)
+      override fun recover(e: Throwable): BIO<E2, A> = BIO.RaiseException(e)
       override fun handleError(e: E): BIO<E2, A> = fe(e).fix()
     }
 
@@ -52,7 +52,7 @@ internal interface IOFrame<in E, in A, out B> : (A) -> B {
 
     private object AttemptBIO : IOFrame<Any?, Any?, BIO<Throwable, Either<Any?, Any?>>> {
       override operator fun invoke(a: Any?): BIO<Throwable, Either<Any?, Any?>> = Pure(Either.Right(a))
-      override fun recover(e: Throwable): BIO<Throwable, Either<Any?, Any?>> = BIO.RaiseLeft(e)
+      override fun recover(e: Throwable): BIO<Throwable, Either<Any?, Any?>> = BIO.RaiseError(e)
       override fun handleError(e: Any?): BIO<Throwable, Either<Any?, Any?>> = Pure(Either.Left(e))
     }
 

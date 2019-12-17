@@ -37,7 +37,7 @@ internal object IORunLoop {
           result = currentIO.a
           hasResult = true
         }
-        is BIO.RaiseError -> {
+        is BIO.RaiseException -> {
           when (val errorHandler: IOFrame<Any?, Any?, BIOOf<Any?, Any?>>? = findErrorHandlerInCallStack(bFirst, bRest)) {
             null -> return currentIO as BIO<E, A>
             else -> {
@@ -47,7 +47,7 @@ internal object IORunLoop {
             }
           }
         }
-        is BIO.RaiseLeft -> {
+        is BIO.RaiseError -> {
           when (val errorHandler: IOFrame<Any?, Any?, BIOOf<Any?, Any?>>? = findErrorHandlerInCallStack(bFirst, bRest)) {
             null -> return currentIO as BIO<E, A>
             else -> {
@@ -67,7 +67,7 @@ internal object IORunLoop {
             hasResult = true
             currentIO = null
           } catch (t: Throwable) {
-            currentIO = BIO.RaiseError(t.nonFatalOrThrow())
+            currentIO = BIO.RaiseException(t.nonFatalOrThrow())
           }
         }
         is BIO.Async -> {
@@ -112,11 +112,11 @@ internal object IORunLoop {
           }
         }
         null -> {
-          currentIO = BIO.RaiseError(IORunLoopStepOnNull)
+          currentIO = BIO.RaiseException(IORunLoopStepOnNull)
         }
         else -> {
           // Since we don't capture the value of `when` kotlin doesn't enforce exhaustiveness
-          currentIO = BIO.raiseError(IORunLoopMissingStep)
+          currentIO = BIO.raiseException(IORunLoopMissingStep)
         }
       }
 
@@ -178,7 +178,7 @@ internal object IORunLoop {
           result = currentIO.a
           hasResult = true
         }
-        is BIO.RaiseError -> {
+        is BIO.RaiseException -> {
           when (val errorHandler: IOFrame<Any?, Any?, BIOOf<Any?, Any?>>? = findErrorHandlerInCallStack(bFirst, bRest)) {
             null -> {
               cb(BIOResult.Error(currentIO.exception))
@@ -191,7 +191,7 @@ internal object IORunLoop {
             }
           }
         }
-        is BIO.RaiseLeft -> {
+        is BIO.RaiseError -> {
           when (val errorHandler: IOFrame<Any?, Any?, BIOOf<Any?, Any?>>? = findErrorHandlerInCallStack(bFirst, bRest)) {
             null -> {
               cb(BIOResult.Left(currentIO.left))
@@ -215,7 +215,7 @@ internal object IORunLoop {
             currentIO = null
           } catch (t: Throwable) {
             if (NonFatal(t)) {
-              currentIO = BIO.RaiseError(t)
+              currentIO = BIO.RaiseException(t)
             } else {
               throw t
             }
@@ -287,11 +287,11 @@ internal object IORunLoop {
           }
         }
         null -> {
-          currentIO = BIO.RaiseError(IORunLoopOnNull)
+          currentIO = BIO.RaiseException(IORunLoopOnNull)
         }
         else -> {
           // Since we don't capture the value of `when` kotlin doesn't enforce exhaustiveness
-          currentIO = BIO.RaiseError(IORunLoopMissingLoop)
+          currentIO = BIO.RaiseException(IORunLoopMissingLoop)
         }
       }
 
@@ -318,7 +318,7 @@ internal object IORunLoop {
       f().fix()
     } catch (e: Throwable) {
       if (NonFatal(e)) {
-        BIO.RaiseError(e)
+        BIO.RaiseException(e)
       } else {
         throw e
       }
@@ -430,8 +430,8 @@ internal object IORunLoop {
       if (canCall) {
         canCall = false
         when (either) {
-          is BIOResult.Error -> BIO.RaiseError(either.exception)
-          is BIOResult.Left -> BIO.RaiseLeft(either.e)
+          is BIOResult.Error -> BIO.RaiseException(either.exception)
+          is BIOResult.Left -> BIO.RaiseError(either.e)
           is BIOResult.Right -> BIO.Pure(either.a)
         }.let { r ->
           if (shouldTrampoline) {
@@ -449,7 +449,7 @@ internal object IORunLoop {
         canCall = false
         result.fold(
           { a -> BIO.Pure(a) },
-          { e -> BIO.RaiseError(e) }
+          { e -> BIO.RaiseException(e) }
         ).let { r ->
           if (shouldTrampoline) {
             this.value = r
@@ -480,12 +480,12 @@ internal object IORunLoop {
         null)
 
     override fun recover(e: Throwable): BIO<Any?, Any?> =
-      BIO.ContextSwitch(BIO.RaiseError(e), { current ->
+      BIO.ContextSwitch(BIO.RaiseException(e), { current ->
         restore(null, null, e, old, current)
       }, null)
 
     override fun handleError(e: Any?): BIO<Any?, Any?> =
-      BIO.ContextSwitch(BIO.RaiseLeft(e), { current ->
+      BIO.ContextSwitch(BIO.RaiseError(e), { current ->
         restore(null, e, null, old, current)
       }, null)
   }

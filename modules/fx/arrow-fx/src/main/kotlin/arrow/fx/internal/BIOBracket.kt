@@ -1,7 +1,6 @@
 package arrow.fx.internal
 
 import arrow.core.Either
-import arrow.core.Right
 import arrow.core.nonFatalOrThrow
 import arrow.fx.BIO
 import arrow.fx.BIOOf
@@ -91,7 +90,7 @@ internal object BIOBracket {
               val fb = try {
                 use(a)
               } catch (e: Throwable) {
-                IO.raiseError<B>(e.nonFatalOrThrow())
+                IO.raiseException<B>(e.nonFatalOrThrow())
               }.fix()
 
               BIO.Bind(fb.fix(), frame)
@@ -177,23 +176,23 @@ internal object BIOBracket {
   private class ReleaseRecoverException(val error: Throwable) : IOFrame<Any?, Unit, IO<Nothing>> {
 
     override fun recover(e: Throwable): IO<Nothing> =
-      IO.raiseError(Platform.composeErrors(error, e))
+      IO.raiseException(Platform.composeErrors(error, e))
 
-    override fun invoke(a: Unit): IO<Nothing> = IO.raiseError(error)
+    override fun invoke(a: Unit): IO<Nothing> = IO.raiseException(error)
 
-    override fun handleError(e: Any?): IO<Nothing> = IO.raiseError(error)
+    override fun handleError(e: Any?): IO<Nothing> = IO.raiseException(error)
   }
 
   private class ReleaseRecoverError<E>(val error: E) : IOFrame<E, Unit, BIO<E, Nothing>> {
 
     override fun handleError(e: E): BIO<E, Nothing> =
-      BIO.RaiseLeft(error)
+      BIO.RaiseError(error)
 
     override fun recover(e: Throwable): BIO<E, Nothing> =
-      BIO.RaiseLeft(error)
+      BIO.RaiseError(error)
 
     override fun invoke(a: Unit): BIO<E, Nothing> =
-      BIO.RaiseLeft(error)
+      BIO.RaiseError(error)
   }
 
   private val disableUncancelableAndPop: (Any?, Any?, Throwable?, IOConnection, IOConnection) -> IOConnection =

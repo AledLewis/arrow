@@ -386,9 +386,6 @@ interface FlowableKMonadFilter : MonadFilter<ForFlowableK> {
   override fun <A, B> Kind<ForFlowableK, A>.map(f: (A) -> B): FlowableK<B> =
     fix().map(f)
 
-  override fun <A, B, Z> Kind<ForFlowableK, A>.map2(fb: Kind<ForFlowableK, B>, f: (Tuple2<A, B>) -> Z): FlowableK<Z> =
-    fix().map2(fb, f)
-
   override fun <A> just(a: A): FlowableK<A> =
     FlowableK.just(a)
 }

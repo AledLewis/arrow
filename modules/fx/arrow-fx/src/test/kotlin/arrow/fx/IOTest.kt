@@ -87,7 +87,7 @@ class IOTest : UnitSpec() {
 
     "should throw immediate failure by raiseError" {
       try {
-        IO.raiseError<Int>(MyException()).unsafeRunSync()
+        IO.raiseException<Int>(MyException()).unsafeRunSync()
         fail("")
       } catch (myException: MyException) {
         // Success
@@ -97,7 +97,7 @@ class IOTest : UnitSpec() {
     }
 
     "should yield immediate left pure value" {
-      val run = IO.raiseLeft(1).unsafeRunSync()
+      val run = IO.raiseError(1).unsafeRunSync()
 
       val expected = Left(1)
 
@@ -136,7 +136,7 @@ class IOTest : UnitSpec() {
     }
 
     "should return a null left value from unsafeRunSync" {
-      val value = IO.raiseLeft<Int?>(null).unsafeRunSync()
+      val value = IO.raiseError<Int?>(null).unsafeRunSync()
 
       value shouldBe Left(null)
     }
@@ -150,7 +150,7 @@ class IOTest : UnitSpec() {
 
     "should complete when running a left value with unsafeRunAsync" {
       val expected = 0
-      BIO.raiseLeft(expected).unsafeRunAsync { either: BIOResult<Int, String> ->
+      BIO.raiseError(expected).unsafeRunAsync { either: BIOResult<Int, String> ->
         either.fold({ fail("") }, { it shouldBe expected }, { fail("") })
       }
     }
@@ -163,7 +163,7 @@ class IOTest : UnitSpec() {
     }
 
     "should return an error when running an exception with unsafeRunAsync" {
-      IO.raiseError<Int>(MyException()).unsafeRunAsync { either: Either<Throwable, Int> ->
+      IO.raiseException<Int>(MyException()).unsafeRunAsync { either: Either<Throwable, Int> ->
         either.fold({
           when (it) {
             is MyException -> {
@@ -206,7 +206,7 @@ class IOTest : UnitSpec() {
 
     "should complete when running a pure left value with runAsync" {
       val expected = 0
-      IO.raiseLeft(expected).runAsync { either: BIOResult<Int, String> ->
+      IO.raiseError(expected).runAsync { either: BIOResult<Int, String> ->
         either.fold({ fail("") }, { IO { it shouldBe expected } }, { fail("") })
       }
     }
@@ -219,7 +219,7 @@ class IOTest : UnitSpec() {
     }
 
     "should return an error when running an exception with runAsync" {
-      IO.raiseError<Int>(MyException()).runAsync { either: Either<Throwable, Int> ->
+      IO.raiseException<Int>(MyException()).runAsync { either: Either<Throwable, Int> ->
         either.fold({
           when (it) {
             is MyException -> {
@@ -263,7 +263,7 @@ class IOTest : UnitSpec() {
     }
 
     "should mapLeft values correctly on success" {
-      val run = IO.raiseLeft(1).mapLeft { it + 1 }.unsafeRunSync()
+      val run = IO.raiseError(1).mapLeft { it + 1 }.unsafeRunSync()
 
       val expected = Left(2)
 
@@ -279,7 +279,7 @@ class IOTest : UnitSpec() {
     }
 
     "should flatMapLeft values correctly on left" {
-      val run = IO.raiseLeft(1).flatMapLeft { num -> BIO.raiseLeft(num + 1) }.unsafeRunSync()
+      val run = IO.raiseError(1).flatMapLeft { num -> BIO.raiseError(num + 1) }.unsafeRunSync()
 
       val expected = Left(2)
 
@@ -287,7 +287,7 @@ class IOTest : UnitSpec() {
     }
 
     "should flatMapLeft recover correctly on left" {
-      val run = IO.raiseLeft(1).flatMapLeft { num -> BIO.just(num + 1) }.unsafeRunSync()
+      val run = IO.raiseError(1).flatMapLeft { num -> BIO.just(num + 1) }.unsafeRunSync()
 
       val expected = Right(2)
 
@@ -493,7 +493,7 @@ class IOTest : UnitSpec() {
       }
 
       forAll(Gen.string()) { message ->
-        BIO.Bind(BIO.raiseError(RuntimeException(message)), ThrowableAsStringFrame as (Int) -> IO<String>)
+        BIO.Bind(BIO.raiseException(RuntimeException(message)), ThrowableAsStringFrame as (Int) -> IO<String>)
           .unsafeRunSync().value() == message
       }
     }

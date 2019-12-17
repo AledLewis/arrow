@@ -34,7 +34,6 @@ import arrow.fx.typeclasses.ExitCase
 import arrow.fx.typeclasses.Fiber
 import arrow.fx.typeclasses.mapUnit
 import kotlin.coroutines.CoroutineContext
-import kotlin.coroutines.EmptyCoroutineContext
 import kotlin.coroutines.resume
 import kotlin.coroutines.resumeWithException
 import kotlin.coroutines.suspendCoroutine
@@ -80,8 +79,12 @@ sealed class BIO<out E, out A> : BIOOf<E, A> {
      * }
      * ```
      */
-    fun <A> effect(f: suspend () -> A): BIO<Nothing, A> =
+    fun <A> effect(f: suspend () -> A): IO<A> =
       Effect(effect = f)
+
+    /** @see effect */
+    operator fun <A> invoke(f: suspend () -> A): IO<A> =
+      effect(f)
 
     /**
      * Delay a suspended effect on provided [CoroutineContext].
@@ -109,9 +112,9 @@ sealed class BIO<out E, out A> : BIOOf<E, A> {
     operator fun <A> invoke(ctx: CoroutineContext, f: suspend () -> A): IO<A> =
       effect(ctx, f)
 
-    /** @see effect */
-    operator fun <A> invoke(f: suspend () -> A): IO<A> =
-      effect(EmptyCoroutineContext, f)
+    @JvmName("biEffect")
+    fun <E, A> effect(ctx: CoroutineContext, f: suspend () -> Either<E, A>): BIO<E, A> =
+      Effect(ctx, f).flatMap { it.fold(this::raiseError, this::just) }
 
     /**
      * Just wrap a pure value [A] into [IO].
@@ -143,9 +146,9 @@ sealed class BIO<out E, out A> : BIOOf<E, A> {
      * }
      * ```
      */
-    fun <A> raiseError(e: Throwable): IO<A> = RaiseError(e)
+    fun <A> raiseException(e: Throwable): IO<A> = RaiseException(e)
 
-    fun <E> raiseLeft(e: E): BIO<E, Nothing> = RaiseLeft(e)
+    fun <E> raiseError(e: E): BIO<E, Nothing> = RaiseError(e)
 
     /**
      *  Sleeps for a given [duration] without blocking a thread.
@@ -766,14 +769,14 @@ sealed class BIO<out E, out A> : BIOOf<E, A> {
     override fun unsafeRunTimedTotal(limit: Duration): Option<Either<Nothing, A>> = Some(Right(a))
   }
 
-  internal data class RaiseError(val exception: Throwable) : BIO<Nothing, Nothing>() {
+  internal data class RaiseException(val exception: Throwable) : BIO<Nothing, Nothing>() {
     // Errors short-circuit
     override fun <B> map(f: (Nothing) -> B): BIO<Nothing, B> = this
 
     override fun unsafeRunTimedTotal(limit: Duration): Option<Nothing> = throw exception
   }
 
-  internal data class RaiseLeft<E>(val left: E) : BIO<E, Nothing>() {
+  internal data class RaiseError<E>(val left: E) : BIO<E, Nothing>() {
     // Errors short-circuit
     override fun <B> map(f: (Nothing) -> B): BIO<E, B> = this
 
@@ -909,21 +912,21 @@ fun <E, A, E2> BIOOf<E, A>.fallbackWith(fa: BIOOf<E2, A>): BIO<E2, A> =
 fun <E, A, E2 : E, B> BIOOf<E, A>.flatMap(f: (A) -> BIOOf<E2, B>): BIO<E2, B> =
   when (val bio = fix()) {
     is BIO.Pure -> BIO.Suspend { f(bio.a).fix() }
-    is BIO.RaiseError,
-    is BIO.RaiseLeft -> bio as BIO<E2, B>
+    is BIO.RaiseException,
+    is BIO.RaiseError -> bio as BIO<E2, B>
     else -> BIO.Bind(bio) { f(it).fix() }
   }
 
 fun <E, A, E2, B : A> BIOOf<E, A>.flatMapLeft(f: (E) -> BIOOf<E2, A>): BIO<E2, A> =
   when (val bio = fix()) {
-    is BIO.RaiseLeft -> f(bio.left).fix()
+    is BIO.RaiseError -> f(bio.left).fix()
     is BIO.Pure,
-    is BIO.RaiseError -> bio as BIO<E2, B>
+    is BIO.RaiseException -> bio as BIO<E2, B>
     else -> BIO.Bind(bio, IOFrame.Companion.MapError(f))
   }
 
 fun <E, A, E2> BIOOf<E, A>.mapLeft(f: (E) -> E2): BIO<E2, A> =
-  flatMapLeft { e -> BIO.RaiseLeft(f(e)) }
+  flatMapLeft { e -> BIO.RaiseError(f(e)) }
 
 fun <E, A, E2, B> BIOOf<E, A>.bimap(fe: (E) -> E2, fa: (A) -> B): BIO<E2, B> =
   mapLeft(fe).map(fa)

@@ -28,7 +28,7 @@ open class AttemptNonRaised {
   private fun ioLoopHappy(size: Int, i: Int): IO<Int> =
     if (i < size) {
       IO { i + 1 }.attemptIO().flatMap {
-        it.fold(BIO.Companion::raiseError) { n -> ioLoopHappy(size, n) }
+        it.fold(BIO.Companion::raiseException) { n -> ioLoopHappy(size, n) }
       }
     } else IO.just(1)
 

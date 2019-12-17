@@ -287,9 +287,6 @@ interface MaybeKMonadFilter : MonadFilter<ForMaybeK> {
   override fun <A, B> Kind<ForMaybeK, A>.map(f: (A) -> B): MaybeK<B> =
     fix().map(f)
 
-  override fun <A, B, Z> Kind<ForMaybeK, A>.map2(fb: Kind<ForMaybeK, B>, f: (Tuple2<A, B>) -> Z): MaybeK<Z> =
-    fix().map2(fb, f)
-
   override fun <A> just(a: A): MaybeK<A> =
     MaybeK.just(a)
 }

@@ -1,4 +1,4 @@
-package arrow.fx.mtl
+package arrow.fx.mtl.two
 
 import arrow.core.Either
 import arrow.core.Left
@@ -10,7 +10,6 @@ import arrow.core.extensions.either.monad.flatten
 import arrow.mtl.EitherT
 import arrow.mtl.EitherTOf
 import arrow.mtl.EitherTPartialOf
-import arrow.mtl.extensions.EitherTMonadThrow
 import arrow.mtl.value
 import arrow.fx.Ref
 import arrow.fx.typeclasses.Async
@@ -28,32 +27,58 @@ import arrow.fx.RaceTriple
 import arrow.fx.typeclasses.Concurrent
 import arrow.fx.typeclasses.Dispatchers
 import arrow.fx.typeclasses.Fiber
-import arrow.typeclasses.ApplicativeError
-import arrow.typeclasses.Monad
+import arrow.mtl.fix
+import arrow.typeclasses.MonadError
 import arrow.undocumented
 import kotlin.coroutines.CoroutineContext
 
 @extension
 @undocumented
-interface EitherTBracket<F, L> : Bracket<EitherTPartialOf<F, L>, Throwable>, EitherTMonadThrow<F, L> {
+interface EitherTMonadError2<F, L> : MonadError<EitherTPartialOf<F, L>, L> {
+
+  fun ME(): MonadError<F, Throwable>
+
+  override fun <A> raiseError(e: L): EitherT<F, L, A> =
+    EitherT.left(ME(), e)
+
+  override fun <A> EitherTOf<F, L, A>.handleErrorWith(f: (L) -> EitherTOf<F, L, A>): EitherT<F, L, A> = ME().run {
+    fix().transformF(this) {
+      when (it) {
+        is Either.Left -> f(it.a).value()
+        is Either.Right -> just(it)
+      }
+    }
+  }
+
+  override fun <A> just(a: A): EitherT<F, L, A> =
+    EitherT.just(ME(), a)
+
+  override fun <A, B> EitherTOf<F, L, A>.flatMap(f: (A) -> EitherTOf<F, L, B>): EitherT<F, L, B> =
+    fix().flatMap(ME(), f)
+
+  override fun <A, B> tailRecM(a: A, f: (A) -> EitherTOf<F, L, Either<A, B>>): EitherT<F, L, B> =
+    EitherT.tailRecM(ME(), a, f)
+}
+
+@extension
+@undocumented
+interface EitherTBracket<F, L> : Bracket<EitherTPartialOf<F, L>, L>, EitherTMonadError2<F, L> {
 
   fun MDF(): MonadDefer<F>
 
-  override fun MF(): Monad<F> = MDF()
-
-  override fun AE(): ApplicativeError<F, Throwable> = MDF()
+  override fun ME(): MonadError<F, Throwable> = MDF()
 
   override fun <A, B> EitherTOf<F, L, A>.bracketCase(
-    release: (A, ExitCase<Throwable>) -> EitherTOf<F, L, Unit>,
+    release: (A, ExitCase<L>) -> EitherTOf<F, L, Unit>,
     use: (A) -> EitherTOf<F, L, B>
   ): EitherT<F, L, B> = MDF().run {
     EitherT.liftF<F, L, Ref<F, Option<L>>>(this, Ref(None)).flatMap { ref ->
-      EitherT(value().bracketCase(use = { either ->
+      value().bracketCase(use = { either ->
         when (either) {
           is Either.Right -> use(either.b).value()
           is Either.Left -> just(either)
         }
-      }, release = { either, exitCase ->
+      }, release = { either, exitCase: ExitCase<Throwable> ->
         when (either) {
           is Either.Right -> when (exitCase) {
             is ExitCase.Completed -> release(either.b, ExitCase.Completed).value().flatMap {
@@ -67,16 +92,77 @@ interface EitherTBracket<F, L> : Bracket<EitherTPartialOf<F, L>, Throwable>, Eit
           }
           is Either.Left -> just(Unit)
         }
-      }).flatMap { either ->
-        when (either) {
-          is Either.Right -> ref.get().map {
-            it.fold({ either }, { left -> Left(left) })
-          }
-          is Either.Left -> just(either)
-        }
       })
+
+      TODO()
     }
   }
+
+  //   EitherT.liftF<F, L, Ref<F, Option<L>>>(this, Ref(None)).flatMap { ref ->
+  //     EitherT(value().bracketCase(use = { either ->
+  //       when (either) {
+  //         is Either.Right -> use(either.b).value()
+  //         is Either.Left -> just(either)
+  //       }
+  //     }, release = { either, exitCase ->
+  //       when (either) {
+  //         is Either.Right -> when (exitCase) {
+  //           is ExitCase.Completed -> release(either.b, ExitCase.Completed).value().flatMap {
+  //             it.fold({ l ->
+  //               ref.set(Some(l))
+  //             }, {
+  //               just(Unit)
+  //             })
+  //           }
+  //           else -> release(either.b, exitCase).value().unit()
+  //         }
+  //         is Either.Left -> just(Unit)
+  //       }
+  //     }).flatMap { either ->
+  //       when (either) {
+  //         is Either.Right -> ref.get().map {
+  //           it.fold({ either }, { left -> Left(left) })
+  //         }
+  //         is Either.Left -> just(either)
+  //       }
+  //     })
+  //   }
+  // }
+
+  // override fun <A, B> EitherTOf<F, L, A>.bracketCase(
+  //   release: (A, ExitCase<Throwable>) -> EitherTOf<F, L, Unit>,
+  //   use: (A) -> EitherTOf<F, L, B>
+  // ): EitherT<F, L, B> = MDF().run {
+  //   EitherT.liftF<F, L, Ref<F, Option<L>>>(this, Ref(None)).flatMap { ref ->
+  //     EitherT(value().bracketCase(use = { either ->
+  //       when (either) {
+  //         is Either.Right -> use(either.b).value()
+  //         is Either.Left -> just(either)
+  //       }
+  //     }, release = { either, exitCase ->
+  //       when (either) {
+  //         is Either.Right -> when (exitCase) {
+  //           is ExitCase.Completed -> release(either.b, ExitCase.Completed).value().flatMap {
+  //             it.fold({ l ->
+  //               ref.set(Some(l))
+  //             }, {
+  //               just(Unit)
+  //             })
+  //           }
+  //           else -> release(either.b, exitCase).value().unit()
+  //         }
+  //         is Either.Left -> just(Unit)
+  //       }
+  //     }).flatMap { either ->
+  //       when (either) {
+  //         is Either.Right -> ref.get().map {
+  //           it.fold({ either }, { left -> Left(left) })
+  //         }
+  //         is Either.Left -> just(either)
+  //       }
+  //     })
+  //   }
+  // }
 }
 
 @extension

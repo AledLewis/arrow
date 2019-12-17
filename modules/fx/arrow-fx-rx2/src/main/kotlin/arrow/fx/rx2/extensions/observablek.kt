@@ -1,6 +1,7 @@
 package arrow.fx.rx2.extensions
 
 import arrow.Kind
+import arrow.Kind2
 import arrow.core.Either
 import arrow.core.Eval
 import arrow.core.Option
@@ -36,8 +37,12 @@ import arrow.fx.rx2.asScheduler
 import arrow.fx.rx2.extensions.observablek.dispatchers.dispatchers
 import arrow.fx.typeclasses.CancelToken
 import arrow.fx.typeclasses.ConcurrentSyntax
+import arrow.mtl.EitherT
+import arrow.mtl.ForEitherT
+import arrow.mtl.fix
 import arrow.typeclasses.Applicative
 import arrow.typeclasses.ApplicativeError
+import arrow.typeclasses.Bifunctor
 import arrow.typeclasses.Foldable
 import arrow.typeclasses.Functor
 import arrow.typeclasses.FunctorFilter
@@ -325,9 +330,14 @@ interface ObservableKMonadFilter : MonadFilter<ForObservableK> {
   override fun <A, B> Kind<ForObservableK, A>.map(f: (A) -> B): ObservableK<B> =
     fix().map(f)
 
-  override fun <A, B, Z> Kind<ForObservableK, A>.map2(fb: Kind<ForObservableK, B>, f: (Tuple2<A, B>) -> Z): ObservableK<Z> =
-    fix().map2(fb, f)
-
   override fun <A> just(a: A): ObservableK<A> =
     ObservableK.just(a)
+}
+
+typealias ForEitherObservable = Kind<ForEitherT, ForObservableK>
+
+@extension
+interface ObservableKBiFunctor : Bifunctor<ForEitherObservable> {
+  override fun <A, B, C, D> Kind2<ForEitherObservable, A, B>.bimap(fl: (A) -> C, fr: (B) -> D): EitherT<ForObservableK, C, D> =
+    EitherT(fix().value().fix().map { it.bimap(fl, fr) })
 }

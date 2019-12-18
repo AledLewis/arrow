@@ -31,7 +31,7 @@ buildscript {
         kotlinTestVersion = '3.3.3'
         kotlinVersion = '1.3.50'
         kotlinxCollectionsImmutableVersion = '0.1'
-        kotlinxCoroutinesVersion = '1.3.2'
+        kotlinxCoroutinesVersion = '1.3.3'
         projectReactorVersion = '3.2.6.RELEASE'
         retrofitVersion = '2.5.0'
         rxJavaVersion = '2.2.13'

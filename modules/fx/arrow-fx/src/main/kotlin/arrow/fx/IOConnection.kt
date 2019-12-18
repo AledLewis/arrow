@@ -10,10 +10,12 @@ import kotlin.coroutines.AbstractCoroutineContextElement
 import kotlin.coroutines.CoroutineContext
 import arrow.fx.handleErrorWith as handleErrorW
 
-fun IOConnection.toDisposable(): Disposable = { cancel().fix().unsafeRunSync() }
+fun IOConnection.toDisposable(): Disposable = {
+  cancel().fix().unsafeRunSync()
+}
 typealias IOConnection = KindConnection<ForIO>
 
-internal class IOContext(val connection: IOConnection) : AbstractCoroutineContextElement(IOContext) {
+class IOContext(val connection: IOConnection) : AbstractCoroutineContextElement(IOContext) {
   companion object Key : CoroutineContext.Key<IOContext>
 }
 

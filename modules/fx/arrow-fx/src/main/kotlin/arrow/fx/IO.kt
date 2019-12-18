@@ -551,6 +551,9 @@ sealed class IO<out A> : IOOf<A> {
      * ```
      */
     val never: IO<Nothing> = async { }
+
+    fun shift(ctx: CoroutineContext): IO<Unit> =
+      unit.continueOn(ctx)
   }
 
   /**
@@ -987,6 +990,15 @@ sealed class IO<out A> : IOOf<A> {
    */
   fun guaranteeCase(finalizer: (ExitCase<Throwable>) -> IOOf<Unit>): IO<A> =
     IOBracket.guaranteeCase(this, finalizer)
+
+  fun onCancel(token: CancelToken<ForIO>): IO<A> =
+    guaranteeCase { ec ->
+      when(ec) {
+        ExitCase.Canceled -> token
+        ExitCase.Completed -> unit
+        is ExitCase.Error -> unit
+      }
+    }
 
   internal data class Pure<out A>(val a: A) : IO<A>() {
     // Pure can be replaced by its value

@@ -18,7 +18,7 @@ private typealias CallStack = ArrayStack<BindF>
 private typealias Callback = (Either<Throwable, Any?>) -> Unit
 
 @Suppress("UNCHECKED_CAST", "ReturnCount", "ComplexMethod")
-internal object IORunLoop {
+object IORunLoop {
 
   fun <A> start(source: IOOf<A>, cb: (Either<Throwable, A>) -> Unit): Unit =
     loop(source, KindConnection.uncancelable, cb as Callback, null, null, null, IOContext(KindConnection.uncancelable))

@@ -66,6 +66,9 @@ interface IOFunctor<E> : Functor<IOPartialOf<E>> {
 interface IOApply<E> : Apply<IOPartialOf<E>>, IOFunctor<E> {
   override fun <A, B> IOOf<E, A>.ap(ff: IOOf<E, (A) -> B>): IO<E, B> =
     Ap(ff)
+
+  override fun <A, B> Kind<ForIO, A>.lazyAp(ff: () -> Kind<ForIO, (A) -> B>): Kind<ForIO, B> =
+    fix().flatMap { a -> ff().map { f -> f(a) } }
 }
 
 @extension
@@ -73,6 +76,19 @@ interface IOApplicative<E> : Applicative<IOPartialOf<E>>, IOApply<E> {
   override fun <A> just(a: A): IO<E, A> =
     IO.just(a)
 
+  override fun <A, B> IOOf<A>.ap(ff: IOOf<(A) -> B>): IO<B> =
+    fix().ap(ff)
+
+  override fun <A, B> Kind<ForIO, A>.lazyAp(ff: () -> Kind<ForIO, (A) -> B>): Kind<ForIO, B> =
+    fix().flatMap { a -> ff().map { f -> f(a) } }
+}
+
+@extension
+interface IOMonad : Monad<ForIO> {
+  override fun <A, B> IOOf<A>.flatMap(f: (A) -> IOOf<B>): IO<B> =
+    fix().flatMap(f)
+
+  override fun <A, B> IOOf<A>.map(f: (A) -> B): IO<B> =
   override fun <A, B> IOOf<E, A>.map(f: (A) -> B): IO<E, B> =
     fix().map(f)
 }
@@ -90,6 +106,9 @@ interface IOMonad<E> : Monad<IOPartialOf<E>>, IOApplicative<E> {
 
   override fun <A, B> IOOf<E, A>.ap(ff: IOOf<E, (A) -> B>): IO<E, B> =
     Ap(ff)
+
+  override fun <A, B> Kind<ForIO, A>.lazyAp(ff: () -> Kind<ForIO, (A) -> B>): Kind<ForIO, B> =
+    fix().flatMap { a -> ff().map { f -> f(a) } }
 }
 
 @extension
@@ -132,6 +151,9 @@ interface IOMonadError<E> : MonadError<IOPartialOf<E>, Throwable>, IOApplicative
 
   override fun <A> raiseError(e: Throwable): IO<Nothing, A> =
     IO.raiseException(e)
+
+  override fun <A, B> Kind<ForIO, A>.lazyAp(ff: () -> Kind<ForIO, (A) -> B>): Kind<ForIO, B> =
+    fix().flatMap { a -> ff().map { f -> f(a) } }
 }
 
 @extension

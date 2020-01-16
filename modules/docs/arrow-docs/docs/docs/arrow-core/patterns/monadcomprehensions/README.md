@@ -77,7 +77,7 @@ Arrow uses this capability of the compiler to bring you coroutines-like notation
 This means that comprehensions are available for `Option`, `Try`, `List`, `Reader`, `Observable`, `Flux`, or `IO` all the same.
 In the following examples, we'll use `IO`, as it's a simple concurrency primitive with straightforward behavior.
 
-Every instance of [`Monad`]({{ '/docs/arrow/typeclasses/monad' | relative_url }}) contains a method `binding` that receives a suspended function as a parameter.
+Every instance of [`Monad`]({{ '/docs/arrow/typeclasses/monad' | relative_url }}) contains a method `fx` that receives a suspended function as a parameter.
 This functions must return the last element of the sequence of operations.
 Let's see a minimal example.
 
@@ -92,7 +92,7 @@ IO.fx {
 }.fix().unsafeRunSync()
 ```
 
-Anything in the function inside `binding` can be imperative and sequential code that'll be executed when the data type decides.
+Anything in the function inside `fx` can be imperative and sequential code that'll be executed when the data type decides.
 In the case of [`IO`]({{ '/docs/effects/io' | relative_url }}), it is immediately run blocking the current thread using `unsafeRunSync()`. Let's expand the example by adding a second operation:
 
 ```kotlin
